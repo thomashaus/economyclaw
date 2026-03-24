@@ -89,7 +89,7 @@ app.get('/state-of-the-state', async (req, res) => {
     }
   }
 
-  const online = Object.values(healthChecks).filter(h => h.status === 'online').length;
+  const online = Object.values(healthChecks).filter(h => h.status !== 'offline').length;
   const total = Object.keys(healthChecks).length;
 
   report.items['economy_health'] = {
