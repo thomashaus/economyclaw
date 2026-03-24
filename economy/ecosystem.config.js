@@ -1,0 +1,24 @@
+module.exports = {
+  apps: [
+    { name: "security",         script: "./defense/security/index.js",              port: 8010 },
+    { name: "iam",              script: "./utilities/iam/index.js",                 port: 8020 },
+    { name: "data-governance",  script: "./defense/data-governance/index.js",       port: 8011 },
+    { name: "context-mgmt",     script: "./utilities/context-management/index.js",  port: 8021 },
+    { name: "backup-dr",        script: "./defense/backup-dr/index.js",             port: 8012 },
+    { name: "trust-scoring",    script: "./regulatory/trust-scoring/index.js",      port: 8030 },
+    { name: "observability",    script: "./regulatory/perf-observability/index.js",  port: 8032 },
+    { name: "treasury",         script: "./chamber/treasury/index.js",              port: 8002 },
+    { name: "trade-desk",       script: "./chamber/trade-desk/index.js",            port: 8003 },
+    { name: "governor",         script: "./chamber/governor/index.js",              port: 8001 },
+    { name: "entrepreneurial",  script: "./regulatory/entrepreneurial-agent/index.js", port: 8031 },
+  ].map(app => ({
+    ...app,
+    cwd: "/Users/danbozicevich/economy",
+    env: { NODE_ENV: "production", PORT: app.port },
+    max_memory_restart: "256M",
+    log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+    error_file: `./services/logs/${app.name}-error.log`,
+    out_file: `./services/logs/${app.name}-out.log`,
+    merge_logs: true,
+  })),
+};
