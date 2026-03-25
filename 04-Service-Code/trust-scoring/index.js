@@ -131,7 +131,7 @@ async function pollServiceHealth() {
     if (!registryRes.ok) return;
     const registry = await registryRes.json();
 
-    for (const [name, info] of Object.entries(registry)) {
+    for (const [name, info] of Object.entries(registry.services || registry)) {
       if (name === SERVICE_NAME) continue; // don't poll self
 
       try {
