@@ -1,0 +1,35 @@
+{
+  "version": "0.5",
+  "machine": "ec-prime",
+  "port": 8003,
+  "sector": "chamber",
+  "routing": {
+    "max_retries": 3,
+    "retry_delay_ms": 5000,
+    "backoff_multiplier": 2,
+    "max_queue_time_minutes": 30,
+    "escalation_deadline_minutes": 5,
+    "min_trust_score_for_assignment": 0.5,
+    "purge_completed_after_hours": 168
+  },
+  "capability_map": {
+    "_comment": "Maps capability keywords to supply services. Phase 0.5 static; Phase 1 dynamic via service /info.",
+    "trust_assessment": { "service": "trust-scoring", "port": 8030 },
+    "identity_check": { "service": "iam", "port": 8020 },
+    "security_scan": { "service": "security", "port": 8010 },
+    "data_governance": { "service": "data-governance", "port": 8011 },
+    "backup": { "service": "backup-dr", "port": 8012 },
+    "context_management": { "service": "context-management", "port": 8021 },
+    "observability": { "service": "observability", "port": 8032 },
+    "token_tracking": { "service": "treasury", "port": 8002 },
+    "governance_report": { "service": "governor", "port": 8001 },
+    "gap_analysis": { "service": "entrepreneurial", "port": 8031 }
+  },
+  "registry_url": "http://localhost:8099",
+  "trust_scoring_url": "http://localhost:8030",
+  "governor_url": "http://localhost:8001",
+  "persistence": {
+    "file": "./trade-desk-queue.json",
+    "save_interval_ms": 10000
+  }
+}

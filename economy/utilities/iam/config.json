@@ -1,0 +1,96 @@
+{
+  "version": "0.5",
+  "machine": "ec-prime",
+  "port": 8020,
+  "sector": "utilities",
+  "tokens": {
+    "secret_length": 64,
+    "expiry_hours": 24,
+    "rotation_on_restart": true,
+    "algorithm": "sha256-hmac"
+  },
+  "access_policies": {
+    "_comment": "Phase 0.5: permissive defaults. Phase 1: tighten per service.",
+    "default_policy": "allow_registered",
+    "governor_override": true,
+    "policies": [
+      {
+        "caller": "*",
+        "target": "service-registry",
+        "endpoints": ["/health", "/services", "/services/*"],
+        "methods": ["GET"],
+        "allow": true,
+        "note": "All services can read the registry"
+      },
+      {
+        "caller": "*",
+        "target": "*",
+        "endpoints": ["/health", "/info"],
+        "methods": ["GET"],
+        "allow": true,
+        "note": "Health and info are public"
+      },
+      {
+        "caller": "governor",
+        "target": "*",
+        "endpoints": ["*"],
+        "methods": ["*"],
+        "allow": true,
+        "note": "Governor has read access to all services (mandate-based, P23-P25)"
+      },
+      {
+        "caller": "governor",
+        "target": "trust-scoring",
+        "endpoints": ["/restore", "/penalty"],
+        "methods": ["POST"],
+        "allow": true,
+        "note": "Governor can report penalties and authorize restorations"
+      },
+      {
+        "caller": "observability",
+        "target": "trust-scoring",
+        "endpoints": ["/penalty"],
+        "methods": ["POST"],
+        "allow": true,
+        "note": "Observability can report penalties based on health data"
+      },
+      {
+        "caller": "*",
+        "target": "trust-scoring",
+        "endpoints": ["/scores", "/scores/*", "/summary"],
+        "methods": ["GET"],
+        "allow": true,
+        "note": "Any service can read trust scores"
+      },
+      {
+        "caller": "*",
+        "target": "trust-scoring",
+        "endpoints": ["/peer-assess"],
+        "methods": ["POST"],
+        "allow": true,
+        "note": "Any service can submit peer assessments (Decision #80)"
+      },
+      {
+        "caller": "*",
+        "target": "trade-desk",
+        "endpoints": ["/request"],
+        "methods": ["POST"],
+        "allow": true,
+        "note": "Any service or demand-side client can submit work requests"
+      },
+      {
+        "caller": "trade-desk",
+        "target": "*",
+        "endpoints": ["*"],
+        "methods": ["POST"],
+        "allow": true,
+        "note": "Trade Desk can route work to any supply service"
+      }
+    ]
+  },
+  "registry_url": "http://localhost:8099",
+  "persistence": {
+    "file": "./iam-tokens.json",
+    "save_interval_ms": 10000
+  }
+}

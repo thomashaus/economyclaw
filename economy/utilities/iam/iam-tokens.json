@@ -1,0 +1,16 @@
+{
+  "tokens": {
+    "iam": {
+      "tokenHash": "162b788a5c8280f4",
+      "token": "38406a2853e1dca0057da55554f0ddc57026cab409d8b20a319edcecdff7abbc910cf390adb1ebcbf361e4f888ee5490a66e18f4aae491042942737658607a49",
+      "issuedAt": "2026-03-25T17:38:56.580Z",
+      "expiresAt": "2026-03-26T17:38:56.580Z"
+    }
+  },
+  "stats": {
+    "allowed": 0,
+    "denied": 0,
+    "total": 0
+  },
+  "savedAt": "2026-03-25T18:18:56.777Z"
+}

@@ -1,0 +1,492 @@
+{
+  "scores": {
+    "governor": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.334Z",
+      "createdAt": "2026-03-25T18:14:16.335Z"
+    },
+    "treasury": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.338Z",
+      "createdAt": "2026-03-25T18:14:16.338Z"
+    },
+    "trade-desk": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.340Z",
+      "createdAt": "2026-03-25T18:14:16.340Z"
+    },
+    "security": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.343Z",
+      "createdAt": "2026-03-25T18:14:16.343Z"
+    },
+    "data-governance": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.344Z",
+      "createdAt": "2026-03-25T18:14:16.344Z"
+    },
+    "backup-dr": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.345Z",
+      "createdAt": "2026-03-25T18:14:16.345Z"
+    },
+    "iam": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.347Z",
+      "createdAt": "2026-03-25T18:14:16.347Z"
+    },
+    "context-management": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.349Z",
+      "createdAt": "2026-03-25T18:14:16.349Z"
+    },
+    "entrepreneurial": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.350Z",
+      "createdAt": "2026-03-25T18:14:16.350Z"
+    },
+    "observability": {
+      "score": 1,
+      "penalties": [],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 0,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:14:16.351Z",
+      "createdAt": "2026-03-25T18:14:16.351Z"
+    },
+    "market-data": {
+      "score": 0.85,
+      "penalties": [
+        {
+          "timestamp": "2026-03-25T18:15:11.324Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 1,
+          "scoreAfter": 0.95
+        },
+        {
+          "timestamp": "2026-03-25T18:16:41.334Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.95,
+          "scoreAfter": 0.9
+        },
+        {
+          "timestamp": "2026-03-25T18:18:11.327Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.9,
+          "scoreAfter": 0.85
+        }
+      ],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 1,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:18:11.327Z",
+      "createdAt": "2026-03-25T18:14:16.352Z"
+    },
+    "heatseeker": {
+      "score": 0.85,
+      "penalties": [
+        {
+          "timestamp": "2026-03-25T18:15:11.325Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 1,
+          "scoreAfter": 0.95
+        },
+        {
+          "timestamp": "2026-03-25T18:16:41.335Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.95,
+          "scoreAfter": 0.9
+        },
+        {
+          "timestamp": "2026-03-25T18:18:11.328Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.9,
+          "scoreAfter": 0.85
+        }
+      ],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 1,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:18:11.328Z",
+      "createdAt": "2026-03-25T18:14:16.353Z"
+    },
+    "risk-management": {
+      "score": 0.85,
+      "penalties": [
+        {
+          "timestamp": "2026-03-25T18:15:11.326Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 1,
+          "scoreAfter": 0.95
+        },
+        {
+          "timestamp": "2026-03-25T18:16:41.336Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.95,
+          "scoreAfter": 0.9
+        },
+        {
+          "timestamp": "2026-03-25T18:18:11.329Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.9,
+          "scoreAfter": 0.85
+        }
+      ],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 1,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:18:11.329Z",
+      "createdAt": "2026-03-25T18:14:16.353Z"
+    },
+    "trade-approval": {
+      "score": 0.85,
+      "penalties": [
+        {
+          "timestamp": "2026-03-25T18:15:11.327Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 1,
+          "scoreAfter": 0.95
+        },
+        {
+          "timestamp": "2026-03-25T18:16:41.337Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.95,
+          "scoreAfter": 0.9
+        },
+        {
+          "timestamp": "2026-03-25T18:18:11.329Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.9,
+          "scoreAfter": 0.85
+        }
+      ],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 1,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:18:11.329Z",
+      "createdAt": "2026-03-25T18:14:16.354Z"
+    },
+    "trade-execution": {
+      "score": 0.85,
+      "penalties": [
+        {
+          "timestamp": "2026-03-25T18:15:11.328Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 1,
+          "scoreAfter": 0.95
+        },
+        {
+          "timestamp": "2026-03-25T18:16:41.338Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.95,
+          "scoreAfter": 0.9
+        },
+        {
+          "timestamp": "2026-03-25T18:18:11.330Z",
+          "event": "health_check_unreachable",
+          "amount": -0.05,
+          "evidence": "3 consecutive failures: fetch failed",
+          "scoreBefore": 0.9,
+          "scoreAfter": 0.85
+        }
+      ],
+      "peerAssessments": [],
+      "consecutiveHealthFailures": 1,
+      "quarantined": false,
+      "lastUpdated": "2026-03-25T18:18:11.330Z",
+      "createdAt": "2026-03-25T18:14:16.354Z"
+    }
+  },
+  "auditLog": [
+    {
+      "timestamp": "2026-03-25T18:14:16.335Z",
+      "event": "service_initialized",
+      "service": "governor",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.338Z",
+      "event": "service_initialized",
+      "service": "treasury",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.340Z",
+      "event": "service_initialized",
+      "service": "trade-desk",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.343Z",
+      "event": "service_initialized",
+      "service": "security",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.344Z",
+      "event": "service_initialized",
+      "service": "data-governance",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.345Z",
+      "event": "service_initialized",
+      "service": "backup-dr",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.347Z",
+      "event": "service_initialized",
+      "service": "iam",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.349Z",
+      "event": "service_initialized",
+      "service": "context-management",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.350Z",
+      "event": "service_initialized",
+      "service": "entrepreneurial",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.351Z",
+      "event": "service_initialized",
+      "service": "observability",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.352Z",
+      "event": "service_initialized",
+      "service": "market-data",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.353Z",
+      "event": "service_initialized",
+      "service": "heatseeker",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.353Z",
+      "event": "service_initialized",
+      "service": "risk-management",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.354Z",
+      "event": "service_initialized",
+      "service": "trade-approval",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:14:16.354Z",
+      "event": "service_initialized",
+      "service": "trade-execution",
+      "initial_score": 1
+    },
+    {
+      "timestamp": "2026-03-25T18:15:11.324Z",
+      "event": "health_check_unreachable",
+      "service": "market-data",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 1,
+      "newScore": 0.95
+    },
+    {
+      "timestamp": "2026-03-25T18:15:11.325Z",
+      "event": "health_check_unreachable",
+      "service": "heatseeker",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 1,
+      "newScore": 0.95
+    },
+    {
+      "timestamp": "2026-03-25T18:15:11.326Z",
+      "event": "health_check_unreachable",
+      "service": "risk-management",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 1,
+      "newScore": 0.95
+    },
+    {
+      "timestamp": "2026-03-25T18:15:11.327Z",
+      "event": "health_check_unreachable",
+      "service": "trade-approval",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 1,
+      "newScore": 0.95
+    },
+    {
+      "timestamp": "2026-03-25T18:15:11.328Z",
+      "event": "health_check_unreachable",
+      "service": "trade-execution",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 1,
+      "newScore": 0.95
+    },
+    {
+      "timestamp": "2026-03-25T18:16:41.334Z",
+      "event": "health_check_unreachable",
+      "service": "market-data",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.95,
+      "newScore": 0.9
+    },
+    {
+      "timestamp": "2026-03-25T18:16:41.335Z",
+      "event": "health_check_unreachable",
+      "service": "heatseeker",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.95,
+      "newScore": 0.9
+    },
+    {
+      "timestamp": "2026-03-25T18:16:41.336Z",
+      "event": "health_check_unreachable",
+      "service": "risk-management",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.95,
+      "newScore": 0.9
+    },
+    {
+      "timestamp": "2026-03-25T18:16:41.337Z",
+      "event": "health_check_unreachable",
+      "service": "trade-approval",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.95,
+      "newScore": 0.9
+    },
+    {
+      "timestamp": "2026-03-25T18:16:41.338Z",
+      "event": "health_check_unreachable",
+      "service": "trade-execution",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.95,
+      "newScore": 0.9
+    },
+    {
+      "timestamp": "2026-03-25T18:18:11.327Z",
+      "event": "health_check_unreachable",
+      "service": "market-data",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.9,
+      "newScore": 0.85
+    },
+    {
+      "timestamp": "2026-03-25T18:18:11.328Z",
+      "event": "health_check_unreachable",
+      "service": "heatseeker",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.9,
+      "newScore": 0.85
+    },
+    {
+      "timestamp": "2026-03-25T18:18:11.329Z",
+      "event": "health_check_unreachable",
+      "service": "risk-management",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.9,
+      "newScore": 0.85
+    },
+    {
+      "timestamp": "2026-03-25T18:18:11.329Z",
+      "event": "health_check_unreachable",
+      "service": "trade-approval",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.9,
+      "newScore": 0.85
+    },
+    {
+      "timestamp": "2026-03-25T18:18:11.330Z",
+      "event": "health_check_unreachable",
+      "service": "trade-execution",
+      "amount": -0.05,
+      "evidence": "3 consecutive failures: fetch failed",
+      "oldScore": 0.9,
+      "newScore": 0.85
+    }
+  ],
+  "savedAt": "2026-03-25T18:18:51.320Z"
+}

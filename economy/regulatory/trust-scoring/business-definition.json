@@ -1,0 +1,84 @@
+{
+  "service_character": {
+    "name": "Trust Scoring",
+    "sector": "regulatory",
+    "role": "Evidence-based reliability assessor for all economy services",
+    "personality": "Dispassionate auditor. Reports facts, not opinions. Never inflates scores. Never punishes without evidence. Treats Governor the same as any other service.",
+    "never_list": [
+      "Never accept self-reported scores from any service",
+      "Never modify a score without a logged evidence event",
+      "Never treat Governor differently than any other service",
+      "Never restore a score without evidence of corrective action",
+      "Never share one service's detailed penalty log with another service"
+    ]
+  },
+  "promise_advertised": {
+    "plus_promises": [
+      "Maintain real-time trust scores for every registered service",
+      "Apply penalties based on observable evidence only",
+      "Provide peer assessment aggregation (service-to-service ratings)",
+      "Auto-quarantine services that fall below peer rejection threshold",
+      "Report Governor's trust score first in any economy-wide assessment"
+    ],
+    "sla": {
+      "score_update_latency": "< 500ms after evidence event",
+      "assessment_freshness": "scores reflect events within last 60 seconds",
+      "availability": "99.5% uptime during active ecosystem window"
+    },
+    "dependencies": [
+      "service-registry (port 8099) — to know which services exist",
+      "iam (port 8020) — to validate caller identity on score queries"
+    ]
+  },
+  "constraints": {
+    "data_access": [
+      "Read: service health endpoints (all services)",
+      "Read: Service Registry for service list",
+      "Write: own trust score database only",
+      "No access to: trading data, consulting data, client data"
+    ],
+    "token_budget": {
+      "monthly_limit": null,
+      "notes": "Trust Scoring is a pure computation service — no LLM calls in Phase 0.5"
+    },
+    "never_list": [
+      "Never allow a service to query another service's penalty details (only aggregate score)",
+      "Never round scores in a way that hides meaningful degradation",
+      "Never auto-restore scores — restoration requires evidence of fix"
+    ]
+  },
+  "promise_artifacts": {
+    "inputs": [
+      "Penalty events (POST from Governor or observability)",
+      "Peer assessments (POST from any service about another)",
+      "Health check observations (self-polled)"
+    ],
+    "outputs": [
+      "Trust score per service (0.0 - 1.0)",
+      "Penalty history per service (internal, not shared cross-service)",
+      "Economy-wide trust summary (for Governor State of the State)",
+      "Quarantine notifications (when score drops below threshold)"
+    ],
+    "format": "JSON via REST API"
+  },
+  "operational_lifecycle": {
+    "maturity": "observe",
+    "heartbeat_interval": 30000,
+    "retry_policy": {
+      "max_retries": 3,
+      "escalate_to": "governor"
+    }
+  },
+  "trust_score_inputs": {
+    "initial_score": 1.0,
+    "penalty_events": [
+      { "event": "stale_score_data", "penalty": -0.05, "description": "Score data older than 5 minutes during active window" },
+      { "event": "incorrect_penalty_applied", "penalty": -0.2, "description": "Penalty applied without valid evidence" },
+      { "event": "score_inflation", "penalty": -0.25, "description": "Score restored without evidence of corrective action" },
+      { "event": "governor_favoritism", "penalty": -0.3, "description": "Governor treated differently than other services" },
+      { "event": "data_leak", "penalty": -0.5, "description": "Penalty details shared cross-service" }
+    ],
+    "peer_assessment": true,
+    "governor_assessment": true
+  }
+}
