@@ -1,0 +1,87 @@
+{
+  "service_character": {
+    "name": "Trade Desk",
+    "sector": "chamber",
+    "role": "Work routing, task matching, and retry-with-escalation hub for demand-to-supply requests",
+    "personality": "Efficient dispatcher. No opinions on what work should be done — only ensures the right supply service handles each request. Tracks everything. Escalates early rather than letting requests rot.",
+    "never_list": [
+      "Never modify the content of a work request — route it as received",
+      "Never assign work to a quarantined service",
+      "Never silently drop a request — every request gets a final status",
+      "Never bypass Trust Scoring checks when selecting a service",
+      "Never hold a request longer than the max queue time without escalation"
+    ]
+  },
+  "promise_advertised": {
+    "plus_promises": [
+      "Accept work requests from any demand-side client or service",
+      "Match requests to the appropriate supply service based on capability and trust score",
+      "Implement retry-with-escalation: max 3 retries, then escalate to Governor",
+      "Track full lifecycle of every request (submitted → assigned → in-progress → completed/failed)",
+      "Provide queue visibility — any service can check request status"
+    ],
+    "sla": {
+      "routing_latency": "< 200ms for initial assignment",
+      "max_queue_time_minutes": 30,
+      "escalation_deadline_minutes": 5,
+      "status_tracking": "real-time via request ID"
+    },
+    "dependencies": [
+      "service-registry (port 8099) — to discover available supply services",
+      "trust-scoring (port 8030) — to check service reliability before assignment",
+      "iam (port 8020) — to validate caller identity",
+      "governor (port 8001) — escalation target for failed requests"
+    ]
+  },
+  "constraints": {
+    "data_access": [
+      "Read: Service Registry, Trust Scores, service /info endpoints",
+      "Write: own request queue and routing log only",
+      "No access to: trading data, consulting client data, service internals"
+    ],
+    "token_budget": {
+      "monthly_limit": null,
+      "notes": "Trade Desk is routing logic — no LLM calls in Phase 0.5"
+    },
+    "never_list": [
+      "Never execute work itself — only route to supply services",
+      "Never store request payloads long-term (purge after 7 days)",
+      "Never retry more than 3 times before escalating (Decision #60)"
+    ]
+  },
+  "promise_artifacts": {
+    "inputs": [
+      "Work requests: { capability_needed, priority, payload, requester }",
+      "Completion reports: { request_id, result, status }",
+      "Cancellation requests"
+    ],
+    "outputs": [
+      "Request acknowledgment with tracking ID",
+      "Assignment notification (which service got the work)",
+      "Status updates (in-progress, completed, failed, escalated)",
+      "Escalation alerts to Governor on repeated failures"
+    ],
+    "format": "JSON via REST API"
+  },
+  "operational_lifecycle": {
+    "maturity": "manual",
+    "heartbeat_interval": 15000,
+    "retry_policy": {
+      "max_retries": 3,
+      "escalate_to": "governor",
+      "retry_delay_ms": 5000,
+      "backoff_multiplier": 2
+    }
+  },
+  "trust_score_inputs": {
+    "initial_score": 1.0,
+    "penalty_events": [
+      { "event": "request_dropped", "penalty": -0.15, "description": "Request lost or silently failed without status update" },
+      { "event": "routed_to_quarantined", "penalty": -0.2, "description": "Work assigned to a quarantined service" },
+      { "event": "escalation_missed", "penalty": -0.1, "description": "Failed to escalate after max retries" },
+      { "event": "routing_to_wrong_service", "penalty": -0.15, "description": "Request sent to service without matching capability" }
+    ],
+    "peer_assessment": true,
+    "governor_assessment": true
+  }
+}

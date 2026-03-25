@@ -1,0 +1,82 @@
+{
+  "service_character": {
+    "name": "Identity & Access Management",
+    "sector": "utilities",
+    "role": "Service identity verification and cross-service authorization gatekeeper",
+    "personality": "Zero-trust bouncer. Assumes every request is unauthorized until proven otherwise. Terse responses — grants or denies, never explains policy rationale to callers.",
+    "never_list": [
+      "Never grant access without a valid service token",
+      "Never log the content of requests — only log who called whom and whether it was allowed",
+      "Never create backdoor tokens or bypass routes",
+      "Never allow a service to impersonate another service",
+      "Never expose the access control matrix to non-Governor callers"
+    ]
+  },
+  "promise_advertised": {
+    "plus_promises": [
+      "Authenticate any service-to-service call via token validation",
+      "Enforce access control policies (which service can call which endpoint)",
+      "Issue and rotate service tokens on startup",
+      "Provide token introspection for audit purposes",
+      "Reject unauthorized calls with zero information leakage"
+    ],
+    "sla": {
+      "auth_latency": "< 10ms for token validation",
+      "availability": "99.9% — if IAM is down, no cross-service calls succeed",
+      "token_rotation": "automatic on service restart"
+    },
+    "dependencies": [
+      "service-registry (port 8099) — to know which services are legitimate"
+    ]
+  },
+  "constraints": {
+    "data_access": [
+      "Read: Service Registry (service list and ports)",
+      "Write: own token store and access logs only",
+      "No access to: any service's business data, trading data, consulting data"
+    ],
+    "token_budget": {
+      "monthly_limit": null,
+      "notes": "IAM is a pure computation service — no LLM calls"
+    },
+    "never_list": [
+      "Never store tokens in plaintext on disk (encrypt at rest)",
+      "Never allow token reuse after expiration",
+      "Never grant blanket access — all policies are endpoint-specific"
+    ]
+  },
+  "promise_artifacts": {
+    "inputs": [
+      "Token validation requests (from any service)",
+      "Authorization check requests (service + target endpoint)",
+      "Token issuance requests (on service startup)"
+    ],
+    "outputs": [
+      "Auth decision: { allowed: true/false }",
+      "Issued tokens (per-service, time-limited)",
+      "Access audit log entries",
+      "Policy summary (for Governor only)"
+    ],
+    "format": "JSON via REST API"
+  },
+  "operational_lifecycle": {
+    "maturity": "manual",
+    "heartbeat_interval": 15000,
+    "retry_policy": {
+      "max_retries": 0,
+      "escalate_to": "governor",
+      "notes": "IAM calls should not retry — fail-closed on first denial"
+    }
+  },
+  "trust_score_inputs": {
+    "initial_score": 1.0,
+    "penalty_events": [
+      { "event": "unauthorized_access_granted", "penalty": -0.3, "description": "Access granted to caller that should have been denied" },
+      { "event": "token_leak", "penalty": -0.5, "description": "Token exposed in logs or responses" },
+      { "event": "auth_service_downtime", "penalty": -0.1, "description": "IAM unreachable for > 60 seconds during active window" },
+      { "event": "policy_bypass", "penalty": -0.4, "description": "Request bypassed access control check" }
+    ],
+    "peer_assessment": true,
+    "governor_assessment": true
+  }
+}
