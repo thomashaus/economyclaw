@@ -1,0 +1,39 @@
+{
+  "version": "0.5",
+  "mandate": {
+    "scope": "Phase 0.5 — single machine, time-shared, foundation services",
+    "authority": "mandate-based (Promise Theory P23-P25)",
+    "constraints": [
+      "Cannot override Trust Scoring assessments",
+      "Cannot modify own Trust Score",
+      "Must report own Trust Score first in every State of the State",
+      "Human escalation required for score below 0.6"
+    ]
+  },
+  "trust_score": {
+    "initial": 1.0,
+    "self_correction_threshold": 0.8,
+    "reporting_threshold": 0.7,
+    "escalation_threshold": 0.6
+  },
+  "state_of_the_state": {
+    "frequency": "quarterly",
+    "items": [
+      "Governor Trust Score",
+      "The Hard Truth",
+      "Economy Health Profile",
+      "Primary Constraint",
+      "Promise Assessment",
+      "Peer Accountability",
+      "New Services Recommended",
+      "Financial ROI",
+      "Revised 90-Day Plan"
+    ]
+  },
+  "circuit_breakers": {
+    "token_budget_exceeded": true,
+    "context_health_degraded": true,
+    "service_trust_below_threshold": true,
+    "human_overload_detected": true
+  }
+}

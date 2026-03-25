@@ -1,0 +1,19 @@
+# Ignore everything by default
+*
+
+# Then whitelist only what we want
+!.gitignore
+!economy/
+!economy/**
+!trading/
+!trading/**
+!demand/
+!demand/**
+!bin/
+!bin/**
+
+# But still ignore these within whitelisted dirs
+node_modules/
+*.log
+.DS_Store
+package-lock.json

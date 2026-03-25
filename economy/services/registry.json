@@ -1,0 +1,111 @@
+{
+  "version": "0.5",
+  "environment": "phase-05",
+  "machine": "ec-prime",
+  "services": {
+    "governor": {
+      "host": "localhost",
+      "port": 8001,
+      "sector": "chamber",
+      "status": "pending"
+    },
+    "treasury": {
+      "host": "localhost",
+      "port": 8002,
+      "sector": "chamber",
+      "status": "online",
+      "last_seen": "2026-03-23T19:17:34.113Z"
+    },
+    "trade-desk": {
+      "host": "localhost",
+      "port": 8003,
+      "sector": "chamber",
+      "status": "online",
+      "last_seen": "2026-03-23T19:17:34.123Z"
+    },
+    "security": {
+      "host": "localhost",
+      "port": 8010,
+      "sector": "defense",
+      "status": "online",
+      "last_seen": "2026-03-23T19:17:34.096Z"
+    },
+    "data-governance": {
+      "host": "localhost",
+      "port": 8011,
+      "sector": "defense",
+      "status": "online",
+      "last_seen": "2026-03-23T19:17:34.075Z"
+    },
+    "backup-dr": {
+      "host": "localhost",
+      "port": 8012,
+      "sector": "defense",
+      "status": "online",
+      "last_seen": "2026-03-23T19:17:34.094Z"
+    },
+    "iam": {
+      "host": "localhost",
+      "port": 8020,
+      "sector": "utilities",
+      "status": "online",
+      "last_seen": "2026-03-23T19:17:34.099Z"
+    },
+    "context-management": {
+      "host": "localhost",
+      "port": 8021,
+      "sector": "utilities",
+      "status": "online",
+      "last_seen": "2026-03-23T19:17:34.079Z"
+    },
+    "trust-scoring": {
+      "host": "localhost",
+      "port": 8030,
+      "sector": "regulatory",
+      "status": "online",
+      "last_seen": "2026-03-23T19:17:34.098Z"
+    },
+    "entrepreneurial": {
+      "host": "localhost",
+      "port": 8031,
+      "sector": "regulatory",
+      "status": "pending"
+    },
+    "observability": {
+      "host": "localhost",
+      "port": 8032,
+      "sector": "regulatory",
+      "status": "pending"
+    },
+    "market-data": {
+      "host": "localhost",
+      "port": 8110,
+      "sector": "trading",
+      "status": "pending"
+    },
+    "heatseeker": {
+      "host": "localhost",
+      "port": 8111,
+      "sector": "trading",
+      "status": "pending"
+    },
+    "risk-management": {
+      "host": "localhost",
+      "port": 8112,
+      "sector": "trading",
+      "status": "pending"
+    },
+    "trade-approval": {
+      "host": "localhost",
+      "port": 8113,
+      "sector": "trading",
+      "status": "pending"
+    },
+    "trade-execution": {
+      "host": "localhost",
+      "port": 8114,
+      "sector": "trading",
+      "status": "pending"
+    }
+  }
+}
