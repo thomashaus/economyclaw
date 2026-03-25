@@ -11,6 +11,8 @@
 !demand/**
 !bin/
 !bin/**
+!04-Service-Code/
+!04-Service-Code/**
 
 # But still ignore these within whitelisted dirs
 node_modules/
