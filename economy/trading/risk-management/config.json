@@ -1,0 +1,66 @@
+{
+  "version": "0.5",
+  "machine": "ec-prime",
+  "port": 8112,
+  "sector": "trading",
+  "instruments": {
+    "ES": { "tick_value": 12.50, "multiplier": 50, "micro": "MES" },
+    "MES": { "tick_value": 1.25, "multiplier": 5, "micro": true },
+    "NQ": { "tick_value": 5.00, "multiplier": 20, "micro": "MNQ" },
+    "MNQ": { "tick_value": 0.50, "multiplier": 2, "micro": true }
+  },
+  "topstep_stages": {
+    "combine": {
+      "label": "Trading Combine (Evaluation)",
+      "max_contracts": { "ES": 2, "MES": 20, "NQ": 2, "MNQ": 20 },
+      "daily_loss_limit": 1500,
+      "max_drawdown": 3000,
+      "profit_target": 6000,
+      "trailing_drawdown": true,
+      "trailing_drawdown_type": "end_of_day"
+    },
+    "xfa": {
+      "label": "Express Funded Account",
+      "max_contracts": { "ES": 2, "MES": 20, "NQ": 2, "MNQ": 20 },
+      "daily_loss_limit": 1500,
+      "max_drawdown": 2000,
+      "profit_target": null,
+      "trailing_drawdown": true,
+      "trailing_drawdown_type": "real_time"
+    },
+    "live": {
+      "label": "Live Funded Account",
+      "max_contracts": { "ES": 2, "MES": 20, "NQ": 2, "MNQ": 20 },
+      "daily_loss_limit": 1500,
+      "max_drawdown": 2000,
+      "profit_target": null,
+      "trailing_drawdown": false
+    }
+  },
+  "active_stage": "combine",
+  "off_hours_rules": {
+    "max_contracts": { "MES": 1, "MNQ": 1 },
+    "allowed_instruments": ["MES", "MNQ"],
+    "max_concurrent_positions": 1,
+    "max_loss_per_trade_dollars": 50
+  },
+  "market_hours_rules": {
+    "allowed_instruments": ["ES", "MES", "NQ", "MNQ"],
+    "max_concurrent_positions": 2,
+    "require_heatseeker_signal": true,
+    "min_map_grade": "B",
+    "min_rr_ratio": 3.0,
+    "max_loss_per_trade_dollars": 200
+  },
+  "global_rules": {
+    "max_daily_loss_pct_of_limit": 0.75,
+    "cooldown_after_consecutive_losses": 3,
+    "cooldown_minutes": 30,
+    "max_trades_per_day": 6,
+    "no_trade_last_minutes_before_close": 15,
+    "required_account_balance_buffer_pct": 0.20
+  },
+  "heatseeker_url": "http://localhost:8111",
+  "market_data_url": "http://localhost:8110",
+  "registry_url": "http://localhost:8099"
+}
