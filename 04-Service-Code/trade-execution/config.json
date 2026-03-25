@@ -1,0 +1,48 @@
+{
+  "version": "0.5",
+  "machine": "ec-prime",
+  "port": 8114,
+  "sector": "trading",
+  "execution_adapter": {
+    "active": "simulated",
+    "adapters": {
+      "simulated": {
+        "label": "Simulated Execution (Paper Trading)",
+        "fill_delay_ms": 500,
+        "slippage_ticks": 1,
+        "fill_rate": 0.95,
+        "partial_fill_enabled": false
+      },
+      "topstepx": {
+        "label": "TopstepX Live Execution",
+        "api_base": "https://gateway.topstepx.com",
+        "auth_endpoint": "/api/Auth/loginKey",
+        "order_endpoint": "/api/Order/place",
+        "position_endpoint": "/api/Position/list",
+        "account_endpoint": "/api/Account/list",
+        "signalr_hub": "/hubs/orderHub",
+        "api_key": null,
+        "username": null,
+        "account_id": null,
+        "configured": false
+      }
+    }
+  },
+  "instruments": {
+    "ES": { "topstep_symbol": "ES", "tick_size": 0.25, "multiplier": 50 },
+    "MES": { "topstep_symbol": "MES", "tick_size": 0.25, "multiplier": 5 },
+    "NQ": { "topstep_symbol": "NQ", "tick_size": 0.25, "multiplier": 20 },
+    "MNQ": { "topstep_symbol": "MNQ", "tick_size": 0.25, "multiplier": 2 }
+  },
+  "order_defaults": {
+    "order_type": "limit",
+    "time_in_force": "day",
+    "bracket_enabled": true,
+    "stop_loss_required": true,
+    "take_profit_required": true
+  },
+  "risk_management_url": "http://localhost:8112",
+  "market_data_url": "http://localhost:8110",
+  "trade_approval_url": "http://localhost:8113",
+  "registry_url": "http://localhost:8099"
+}

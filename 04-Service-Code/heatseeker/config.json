@@ -1,0 +1,39 @@
+{
+  "version": "0.5",
+  "machine": "ec-prime",
+  "port": 8111,
+  "sector": "trading",
+  "instruments": ["ES", "MES", "NQ", "MNQ"],
+  "analysis_mode": {
+    "market_hours": "heatseeker_gex_vex",
+    "off_hours": "price_action_ta_only"
+  },
+  "heatseeker": {
+    "map_quality_grades": ["A+", "B", "C", "F"],
+    "min_trade_grade": "B",
+    "min_rr_ratio": 3.0,
+    "patterns": [
+      "rug_pull", "reverse_rug_slingshot", "gatekeeper_rejection",
+      "whipsaw", "beach_ball", "strong_directional_trend", "floor_bounce"
+    ],
+    "gatekeeper_3test_rule": true,
+    "node_washoff_enabled": true
+  },
+  "price_action": {
+    "indicators": ["sma_9", "sma_20", "ema_9", "ema_21", "rsi_14", "vwap"],
+    "signals": {
+      "rsi_oversold": 30,
+      "rsi_overbought": 70,
+      "vwap_deviation_pct": 0.3,
+      "ema_crossover": true
+    }
+  },
+  "gap_analysis": {
+    "small_gap_threshold_points": 10,
+    "gap_fill_monitoring_minutes": 15,
+    "high_of_day_pattern_enabled": true
+  },
+  "market_data_url": "http://localhost:8110",
+  "risk_management_url": "http://localhost:8112",
+  "registry_url": "http://localhost:8099"
+}

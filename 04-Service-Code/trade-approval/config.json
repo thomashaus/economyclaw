@@ -1,0 +1,51 @@
+{
+  "version": "0.5",
+  "machine": "ec-prime",
+  "port": 8113,
+  "sector": "trading",
+  "approval_modes": {
+    "semi_auto": {
+      "label": "Semi-Automatic (Human Approval Required)",
+      "description": "Signals queue for human review. Auto-reject on risk violations. Auto-expire after timeout.",
+      "auto_approve": false,
+      "auto_reject_on_risk_fail": true,
+      "approval_timeout_minutes": 5,
+      "notify_on_new_signal": true
+    },
+    "full_auto": {
+      "label": "Fully Automatic (No Human Gate)",
+      "description": "Approved signals execute immediately after risk check. USE WITH EXTREME CAUTION.",
+      "auto_approve": true,
+      "auto_reject_on_risk_fail": true,
+      "approval_timeout_minutes": 0,
+      "notify_on_new_signal": false
+    },
+    "observe_only": {
+      "label": "Observe Only (No Execution)",
+      "description": "Signals logged but never approved. Paper trading mode.",
+      "auto_approve": false,
+      "auto_reject_on_risk_fail": true,
+      "approval_timeout_minutes": 0,
+      "notify_on_new_signal": true
+    }
+  },
+  "active_mode": "semi_auto",
+  "guardrails": {
+    "reject_below_map_grade": "C",
+    "reject_below_rr": 2.5,
+    "reject_below_confidence": 0.4,
+    "reject_if_cooldown_active": true,
+    "reject_if_daily_limit_near": true,
+    "daily_limit_near_pct": 0.75
+  },
+  "queue_settings": {
+    "max_pending": 5,
+    "auto_expire_minutes": 10,
+    "cleanup_interval_seconds": 30
+  },
+  "risk_management_url": "http://localhost:8112",
+  "heatseeker_url": "http://localhost:8111",
+  "trade_execution_url": "http://localhost:8114",
+  "market_data_url": "http://localhost:8110",
+  "registry_url": "http://localhost:8099"
+}

@@ -1,0 +1,30 @@
+{
+  "version": "0.5",
+  "machine": "ec-prime",
+  "port": 8110,
+  "sector": "trading",
+  "instruments": {
+    "ES": { "type": "future", "exchange": "CME", "tick_size": 0.25, "tick_value": 12.50, "multiplier": 50, "micro": "MES" },
+    "MES": { "type": "future", "exchange": "CME", "tick_size": 0.25, "tick_value": 1.25, "multiplier": 5, "micro": true },
+    "NQ": { "type": "future", "exchange": "CME", "tick_size": 0.25, "tick_value": 5.00, "multiplier": 20, "micro": "MNQ" },
+    "MNQ": { "type": "future", "exchange": "CME", "tick_size": 0.25, "tick_value": 0.50, "multiplier": 2, "micro": true }
+  },
+  "market_hours": {
+    "futures_open": "17:00",
+    "futures_close": "16:00",
+    "rth_open": "08:30",
+    "rth_close": "15:00",
+    "timezone": "America/Chicago",
+    "pre_market_start": "08:15",
+    "heatseeker_window_start": "08:15",
+    "heatseeker_window_end": "15:15"
+  },
+  "data_sources": {
+    "primary": "topstepx",
+    "fallback": "simulated",
+    "active": "simulated"
+  },
+  "snapshot_interval_ms": 5000,
+  "history_candles_kept": 500,
+  "registry_url": "http://localhost:8099"
+}
