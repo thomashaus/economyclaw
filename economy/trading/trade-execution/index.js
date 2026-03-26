@@ -42,15 +42,20 @@ async function notifyRiskManagement(action, data) {
       ? config.risk_management_url + '/position/open'
       : config.risk_management_url + '/position/' + data.position_id + '/close';
 
-    await fetch(endpoint, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
       signal: AbortSignal.timeout(3000)
     });
+    if (res.ok) {
+      const result = await res.json();
+      return result;
+    }
   } catch (err) {
     console.log('[trade-execution] Risk notification failed: ' + err.message);
   }
+  return null;
 }
 
 async function getCurrentPrice(symbol) {
@@ -66,10 +71,42 @@ async function getCurrentPrice(symbol) {
   return null;
 }
 
+// ─── Stop Order Store ────────────────────────────────────────────────────────
+
+let pendingStopOrders = [];  // stop_buy / stop_sell orders waiting to trigger
+
 // ─── Simulated Execution Adapter ─────────────────────────────────────────────
 
 async function simulatedExecute(order) {
   const simConfig = config.execution_adapter.adapters.simulated;
+
+  // Stop orders don't fill immediately — they go to pending until trigger price is hit
+  if (order.order_type === 'stop_buy' || order.order_type === 'stop_sell') {
+    order.status = 'pending_trigger';
+    order.trigger_price = order.entry_price; // entry_price IS the trigger for stop orders
+    pendingStopOrders.push(order);
+
+    logExecution('stop_order_placed', {
+      order_id: order.id,
+      type: order.order_type,
+      symbol: order.symbol,
+      trigger_price: order.trigger_price,
+      direction: order.direction,
+      message: order.order_type === 'stop_buy'
+        ? 'Buy stop placed ABOVE market. Will trigger on reclaim to ' + order.trigger_price
+        : 'Sell stop placed BELOW market. Will trigger on drop to ' + order.trigger_price
+    });
+
+    return {
+      filled: false,
+      pending_trigger: true,
+      trigger_price: order.trigger_price,
+      reason: order.order_type === 'stop_buy'
+        ? 'Stop buy waiting for price to rise to ' + order.trigger_price + '. Placed above market for entry on reclaim after sweep.'
+        : 'Stop sell waiting for price to drop to ' + order.trigger_price + '. Placed below market for entry on rejection after grab.',
+      adapter: 'simulated'
+    };
+  }
 
   return new Promise((resolve) => {
     setTimeout(async () => {
@@ -105,6 +142,100 @@ async function simulatedExecute(order) {
       });
     }, simConfig.fill_delay_ms);
   });
+}
+
+// ─── Stop Order Monitoring (Simulated) ──────────────────────────────────────
+
+async function monitorStopOrders() {
+  if (pendingStopOrders.length === 0) return;
+
+  for (let i = pendingStopOrders.length - 1; i >= 0; i--) {
+    const stopOrder = pendingStopOrders[i];
+    const price = await getCurrentPrice(stopOrder.symbol);
+    if (!price) continue;
+
+    let triggered = false;
+
+    if (stopOrder.order_type === 'stop_buy' && price >= stopOrder.trigger_price) {
+      triggered = true;
+    } else if (stopOrder.order_type === 'stop_sell' && price <= stopOrder.trigger_price) {
+      triggered = true;
+    }
+
+    if (triggered) {
+      // Remove from pending
+      pendingStopOrders.splice(i, 1);
+
+      const simConfig = config.execution_adapter.adapters.simulated;
+      const slippage = simConfig.slippage_ticks * config.instruments[stopOrder.symbol].tick_size;
+      const fillPrice = stopOrder.direction === 'long'
+        ? price + slippage
+        : price - slippage;
+
+      stopOrder.status = 'filled';
+      stopOrder.fill_price = parseFloat(fillPrice.toFixed(2));
+      stopOrder.filled_at = now();
+      stopOrder.slippage = simConfig.slippage_ticks;
+
+      logExecution('stop_order_triggered', {
+        order_id: stopOrder.id,
+        type: stopOrder.order_type,
+        symbol: stopOrder.symbol,
+        trigger_price: stopOrder.trigger_price,
+        fill_price: stopOrder.fill_price,
+        market_price_at_trigger: price
+      });
+
+      // Create bracket orders
+      if (config.order_defaults.bracket_enabled && stopOrder.stop_price && stopOrder.target_price) {
+        stopOrder.bracket_orders = {
+          stop_loss: {
+            id: generateOrderId(),
+            type: 'stop_market',
+            price: stopOrder.stop_price,
+            status: 'working',
+            created_at: now()
+          },
+          take_profit: {
+            id: generateOrderId(),
+            type: 'limit',
+            price: stopOrder.target_price,
+            status: 'working',
+            created_at: now()
+          }
+        };
+        logExecution('bracket_placed', {
+          order_id: stopOrder.id,
+          stop_id: stopOrder.bracket_orders.stop_loss.id,
+          target_id: stopOrder.bracket_orders.take_profit.id,
+          stop_price: stopOrder.stop_price,
+          target_price: stopOrder.target_price
+        });
+      }
+
+      // Notify risk management
+      const riskPosition = await notifyRiskManagement('open', {
+        symbol: stopOrder.symbol,
+        direction: stopOrder.direction,
+        contracts: stopOrder.contracts,
+        entry_price: stopOrder.fill_price,
+        stop_price: stopOrder.stop_price,
+        target_price: stopOrder.target_price,
+        signal_id: stopOrder.signal_id
+      });
+      if (riskPosition && riskPosition.id) {
+        stopOrder.risk_position_id = riskPosition.id;
+      }
+
+      console.log('[trade-execution] STOP TRIGGERED: ' + stopOrder.order_type + ' ' + stopOrder.symbol +
+        ' @ ' + stopOrder.fill_price + ' (trigger was ' + stopOrder.trigger_price + ')');
+    }
+  }
+}
+
+// Monitor stop orders every 3 seconds in simulated mode
+if (config.execution_adapter.active === 'simulated') {
+  setInterval(monitorStopOrders, 3000);
 }
 
 // ─── TopstepX Execution Adapter (Placeholder) ───────────────────────────────
@@ -198,6 +329,24 @@ async function executeTrade(proposal) {
     result = await simulatedExecute(order);
   }
 
+  if (result.pending_trigger) {
+    // Stop order placed but not yet triggered
+    return {
+      order_id: order.id,
+      status: 'pending_trigger',
+      order_type: order.order_type,
+      symbol: order.symbol,
+      direction: order.direction,
+      contracts: order.contracts,
+      trigger_price: result.trigger_price,
+      stop_price: order.stop_price,
+      target_price: order.target_price,
+      message: result.reason,
+      adapter: order.adapter,
+      timestamp: now()
+    };
+  }
+
   if (result.filled) {
     order.status = 'filled';
     order.fill_price = result.fill_price;
@@ -242,7 +391,7 @@ async function executeTrade(proposal) {
     }
 
     // Notify risk management of open position
-    await notifyRiskManagement('open', {
+    const riskPosition = await notifyRiskManagement('open', {
       symbol: order.symbol,
       direction: order.direction,
       contracts: order.contracts,
@@ -251,6 +400,9 @@ async function executeTrade(proposal) {
       target_price: order.target_price,
       signal_id: order.signal_id
     });
+    if (riskPosition && riskPosition.id) {
+      order.risk_position_id = riskPosition.id;
+    }
 
     return {
       order_id: order.id,
@@ -393,7 +545,9 @@ app.get('/info', (req, res) => {
       'POST /orders/:id/close — manually close at market',
       'GET /execution-log — audit trail',
       'POST /configure-topstepx — set TopstepX API credentials',
-      'POST /adapter — switch execution adapter (simulated/topstepx)'
+      'POST /adapter — switch execution adapter (simulated/topstepx)',
+      'GET /orders/stops — pending stop orders waiting for trigger',
+      'POST /orders/stops/:id/cancel — cancel a pending stop order'
     ]
   });
 });
@@ -513,6 +667,38 @@ app.post('/orders/:id/close', async (req, res) => {
     pnl: order.pnl,
     close_reason: order.close_reason
   });
+});
+
+// Pending stop orders
+app.get('/orders/stops', (req, res) => {
+  res.json({
+    pending_stop_orders: pendingStopOrders.map(o => ({
+      order_id: o.id,
+      type: o.order_type,
+      symbol: o.symbol,
+      direction: o.direction,
+      contracts: o.contracts,
+      trigger_price: o.trigger_price,
+      stop_price: o.stop_price,
+      target_price: o.target_price,
+      created_at: o.created_at
+    })),
+    count: pendingStopOrders.length,
+    note: 'These orders are waiting for price to reach trigger_price before filling.'
+  });
+});
+
+// Cancel a pending stop order
+app.post('/orders/stops/:id/cancel', (req, res) => {
+  const idx = pendingStopOrders.findIndex(o => o.id === req.params.id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Pending stop order not found: ' + req.params.id });
+  }
+  const cancelled = pendingStopOrders.splice(idx, 1)[0];
+  cancelled.status = 'cancelled';
+  cancelled.cancelled_at = now();
+  logExecution('stop_order_cancelled', { order_id: cancelled.id, reason: req.body.reason || 'manual' });
+  res.json({ order_id: cancelled.id, status: 'cancelled', message: 'Stop order cancelled before trigger.' });
 });
 
 // Execution log

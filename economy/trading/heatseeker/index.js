@@ -494,6 +494,118 @@ function checkCommandments(mapData) {
   };
 }
 
+// ─── Rolling Ceiling/Floor Detection ─────────────────────────────────────────
+
+var rollingLevels = {
+  ceilings: [],  // { strike, gex_value, timestamp, vex_value }
+  floors: [],
+  history: [],   // snapshots for compression detection
+  last_updated: null
+};
+
+function updateRollingLevels(mapSnapshot) {
+  // mapSnapshot: { nodes: [{ strike, gex_value, vex_value }], spot_price, timestamp }
+  if (!mapSnapshot || !mapSnapshot.nodes || !mapSnapshot.spot_price) return null;
+
+  var spot = mapSnapshot.spot_price;
+  var ceilings = [];
+  var floors = [];
+
+  // Classify all positive GEX nodes as ceilings (above spot) or floors (below spot)
+  mapSnapshot.nodes.forEach(function(node) {
+    if (node.gex_value > 0) {
+      if (node.strike > spot) {
+        ceilings.push({ strike: node.strike, gex_value: node.gex_value, vex_value: node.vex_value || null });
+      } else {
+        floors.push({ strike: node.strike, gex_value: node.gex_value, vex_value: node.vex_value || null });
+      }
+    }
+  });
+
+  // Sort: ceilings ascending (nearest first), floors descending (nearest first)
+  ceilings.sort(function(a, b) { return a.strike - b.strike; });
+  floors.sort(function(a, b) { return b.strike - a.strike; });
+
+  var snapshot = {
+    timestamp: mapSnapshot.timestamp || now(),
+    spot: spot,
+    ceiling_count: ceilings.length,
+    floor_count: floors.length,
+    nearest_ceiling: ceilings.length > 0 ? ceilings[0].strike : null,
+    farthest_ceiling: ceilings.length > 0 ? ceilings[ceilings.length - 1].strike : null,
+    nearest_floor: floors.length > 0 ? floors[0].strike : null,
+    farthest_floor: floors.length > 0 ? floors[floors.length - 1].strike : null,
+    ceiling_range: ceilings.length > 1 ? ceilings[ceilings.length - 1].strike - ceilings[0].strike : 0,
+    floor_range: floors.length > 1 ? floors[0].strike - floors[floors.length - 1].strike : 0
+  };
+
+  rollingLevels.ceilings = ceilings;
+  rollingLevels.floors = floors;
+  rollingLevels.last_updated = snapshot.timestamp;
+  rollingLevels.history.push(snapshot);
+  if (rollingLevels.history.length > 30) {
+    rollingLevels.history = rollingLevels.history.slice(-30);
+  }
+
+  return snapshot;
+}
+
+function detectCeilingFloorCompression() {
+  var history = rollingLevels.history;
+  if (history.length < 3) return null;
+
+  var latest = history[history.length - 1];
+  var previous = history[history.length - 2];
+  var older = history[history.length - 3];
+
+  var signals = [];
+
+  // Rolling ceilings shrinking = bearish evidence
+  // Upside targets getting smaller means dealers are pulling resistance tighter
+  if (latest.nearest_ceiling && previous.nearest_ceiling && older.nearest_ceiling) {
+    var ceiling_trend = latest.nearest_ceiling - older.nearest_ceiling;
+    if (ceiling_trend < 0 && latest.ceiling_range < previous.ceiling_range) {
+      signals.push({
+        type: 'ceiling_compression',
+        bias: 'bearish',
+        detail: 'Upside targets shrinking. Nearest ceiling moved from ' + older.nearest_ceiling + ' to ' + latest.nearest_ceiling + '.',
+        interpretation: 'Dealers pulling resistance tighter — strong directional bearish evidence. Upside is capping.',
+        ceiling_delta: ceiling_trend,
+        range_compression: previous.ceiling_range - latest.ceiling_range
+      });
+    }
+  }
+
+  // Rolling floors compressing upward = bullish evidence
+  // Downside floors moving higher means dealers are building support underneath
+  if (latest.nearest_floor && previous.nearest_floor && older.nearest_floor) {
+    var floor_trend = latest.nearest_floor - older.nearest_floor;
+    if (floor_trend > 0 && latest.floor_range < previous.floor_range) {
+      signals.push({
+        type: 'floor_compression',
+        bias: 'bullish',
+        detail: 'Downside floors compressing upward. Nearest floor moved from ' + older.nearest_floor + ' to ' + latest.nearest_floor + '.',
+        interpretation: 'Dealers building support higher — strong directional bullish evidence. Downside is firming.',
+        floor_delta: floor_trend,
+        range_compression: previous.floor_range - latest.floor_range
+      });
+    }
+  }
+
+  // Both compressing = squeeze setup
+  if (signals.length === 2) {
+    signals.push({
+      type: 'dual_compression',
+      bias: 'squeeze',
+      detail: 'Both ceilings AND floors compressing simultaneously.',
+      interpretation: 'Volatility compression — expect breakout. Direction determined by which side breaks first. Watch for Beach Ball or Rug Pull setup.',
+      warning: 'Do NOT fade the breakout direction.'
+    });
+  }
+
+  return signals.length > 0 ? signals : null;
+}
+
 // ─── Price Action Signal Generation (Off-Hours) ─────────────────────────────
 
 async function generateTASignal(symbol) {
@@ -655,7 +767,9 @@ app.get('/info', function(req, res) {
       'POST /vix/assess — get VIX regime assessment and implications',
       'GET /methodology/patterns — full pattern library reference',
       'GET /methodology/dealer-behavior — dealer behavior quick reference',
-      'GET /methodology/commandments — Ten Commandments'
+      'GET /methodology/commandments — Ten Commandments',
+      'POST /rolling-levels — submit map snapshot for rolling ceiling/floor tracking',
+      'GET /rolling-levels — current rolling levels and compression signals'
     ]
   });
 });
@@ -1089,6 +1203,59 @@ app.post('/gap-check/:symbol', async function(req, res) {
   }
 });
 
+// ─── Rolling Ceiling/Floor Endpoints ─────────────────────────────────────────
+
+app.post('/rolling-levels', function(req, res) {
+  var body = req.body;
+  if (!body.nodes || !body.spot_price) {
+    return res.status(400).json({
+      error: 'Required: nodes (array of { strike, gex_value, vex_value }), spot_price',
+      example: {
+        spot_price: 5870,
+        nodes: [
+          { strike: 5900, gex_value: 35, vex_value: 20 },
+          { strike: 5880, gex_value: 50, vex_value: 30 },
+          { strike: 5850, gex_value: 25, vex_value: 15 },
+          { strike: 5820, gex_value: -20, vex_value: -10 }
+        ]
+      }
+    });
+  }
+
+  var snapshot = updateRollingLevels(body);
+  var compression = detectCeilingFloorCompression();
+
+  res.json({
+    snapshot: snapshot,
+    ceilings: rollingLevels.ceilings,
+    floors: rollingLevels.floors,
+    compression_signals: compression,
+    history_depth: rollingLevels.history.length,
+    message: compression
+      ? 'COMPRESSION DETECTED — ' + compression.length + ' signal(s). Review compression_signals.'
+      : 'Levels updated. No compression detected yet (need 3+ snapshots).'
+  });
+});
+
+app.get('/rolling-levels', function(req, res) {
+  if (!rollingLevels.last_updated) {
+    return res.json({ message: 'No rolling levels data. Submit map snapshots via POST /rolling-levels.' });
+  }
+
+  var compression = detectCeilingFloorCompression();
+
+  res.json({
+    ceilings: rollingLevels.ceilings,
+    floors: rollingLevels.floors,
+    compression_signals: compression,
+    history_depth: rollingLevels.history.length,
+    last_updated: rollingLevels.last_updated,
+    latest_snapshot: rollingLevels.history.length > 0
+      ? rollingLevels.history[rollingLevels.history.length - 1]
+      : null
+  });
+});
+
 // ─── Daily Reset ─────────────────────────────────────────────────────────────
 
 app.post('/reset-daily', function(req, res) {
@@ -1104,6 +1271,7 @@ app.post('/reset-daily', function(req, res) {
   gatekeeperTests = {};
   // Keep node history — it's useful across days for lifecycle tracking
   trinityState = {};
+  rollingLevels = { ceilings: [], floors: [], history: [], last_updated: null };
 
   console.log('[heatseeker] Daily reset complete');
   res.json({

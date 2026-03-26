@@ -85,6 +85,163 @@ function logDecision(entry, decision, reason, details) {
   return record;
 }
 
+// ─── A+ Setup Checklist Scoring ──────────────────────────────────────────────
+
+async function getHeatseekerData(signalId) {
+  if (!signalId) return null;
+  try {
+    var res = await fetch(config.heatseeker_url + '/signals/' + signalId, {
+      signal: AbortSignal.timeout(3000)
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {}
+  return null;
+}
+
+async function getRollingLevels() {
+  try {
+    var res = await fetch(config.heatseeker_url + '/rolling-levels', {
+      signal: AbortSignal.timeout(3000)
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {}
+  return null;
+}
+
+function scoreSetupChecklist(proposal, heatseekerSignal) {
+  // A+ Setup Checklist:
+  // 1. Hourly chart shows double bottom/top or key S&R level
+  // 2. 3-minute chart confirms with double bottom/top pattern
+  // 3. Heatseeker signal has A or A+ grade with confluence
+  // 4. VIX at key level supporting directional bias
+  // 5. Trinity alignment across SPX/SPY/QQQ
+
+  var checklist = [];
+  var passed = 0;
+  var total = 5;
+
+  // 1. Hourly S&R — check if proposal includes hourly_confirmation
+  var hourlyCheck = {
+    item: 'Hourly double bottom/top or key S&R level',
+    passed: false,
+    detail: 'Not provided'
+  };
+  if (proposal.hourly_confirmation) {
+    hourlyCheck.passed = true;
+    hourlyCheck.detail = proposal.hourly_confirmation;
+    passed++;
+  }
+  checklist.push(hourlyCheck);
+
+  // 2. 3-minute confirmation
+  var threeMinCheck = {
+    item: '3-minute chart double bottom/top confirmation',
+    passed: false,
+    detail: 'Not provided'
+  };
+  if (proposal.three_min_confirmation) {
+    threeMinCheck.passed = true;
+    threeMinCheck.detail = proposal.three_min_confirmation;
+    passed++;
+  }
+  checklist.push(threeMinCheck);
+
+  // 3. Heatseeker grade A or A+
+  var hsGradeCheck = {
+    item: 'Heatseeker signal grade A or A+',
+    passed: false,
+    detail: 'Grade: ' + (proposal.map_grade || 'unknown')
+  };
+  if (proposal.map_grade === 'A+' || proposal.map_grade === 'A') {
+    hsGradeCheck.passed = true;
+    passed++;
+  }
+  // Also check if heatseeker signal has confluence
+  if (heatseekerSignal && heatseekerSignal.pattern_validation) {
+    var pv = heatseekerSignal.pattern_validation;
+    if (pv.valid && pv.confirmations && pv.confirmations.length > 0) {
+      hsGradeCheck.detail += ' + ' + pv.confirmations.length + ' confluence confirmations';
+    }
+  }
+  checklist.push(hsGradeCheck);
+
+  // 4. VIX at key level
+  var vixCheck = {
+    item: 'VIX at key level supporting bias',
+    passed: false,
+    detail: 'No VIX data'
+  };
+  if (heatseekerSignal && heatseekerSignal.vix_assessment) {
+    var vix = heatseekerSignal.vix_assessment;
+    vixCheck.detail = 'VIX regime: ' + vix.regime;
+    // VIX supports bias if: bullish + (high_dropping or low_dropping), bearish + (low_rising)
+    if (vix.regime !== 'Rainbow Road' && vix.regime !== 'unknown') {
+      vixCheck.passed = true;
+      passed++;
+    }
+    if (vix.regime === 'Rainbow Road') {
+      vixCheck.detail += ' — UNRELIABLE. GEX levels cannot be trusted.';
+    }
+  } else if (proposal.vix_confirmed) {
+    vixCheck.passed = true;
+    vixCheck.detail = proposal.vix_confirmed;
+    passed++;
+  }
+  checklist.push(vixCheck);
+
+  // 5. Trinity alignment
+  var trinityCheck = {
+    item: 'Trinity alignment across SPX/SPY/QQQ',
+    passed: false,
+    detail: 'No Trinity data'
+  };
+  if (heatseekerSignal && heatseekerSignal.trinity_assessment) {
+    var tri = heatseekerSignal.trinity_assessment;
+    trinityCheck.detail = 'Direction: ' + (tri.dominant_direction || 'unknown') + ', ratio: ' + (tri.ratio || '?');
+    if (tri.dominant_direction === proposal.direction && tri.ratio >= 1.2) {
+      trinityCheck.passed = true;
+      passed++;
+    } else if (tri.dominant_direction !== proposal.direction) {
+      trinityCheck.detail += ' — OPPOSING trade direction!';
+    }
+  } else if (proposal.trinity_confirmed) {
+    trinityCheck.passed = true;
+    trinityCheck.detail = proposal.trinity_confirmed;
+    passed++;
+  }
+  checklist.push(trinityCheck);
+
+  // Determine tier
+  var tier = 'C';
+  var tierLabel = 'C Setup (Lotto)';
+  var maxRiskPct = 0.01;
+
+  if (passed >= 5) {
+    tier = 'A+';
+    tierLabel = 'A+ Setup — Full Checklist';
+    maxRiskPct = 0.05;
+  } else if (passed >= 3) {
+    tier = 'B';
+    tierLabel = 'B Setup — Good but incomplete checklist (' + passed + '/5)';
+    maxRiskPct = 0.025;
+  }
+
+  return {
+    tier: tier,
+    tier_label: tierLabel,
+    max_risk_pct: maxRiskPct,
+    passed: passed,
+    total: total,
+    score_pct: Math.round((passed / total) * 100),
+    checklist: checklist,
+    recommendation: tier === 'A+'
+      ? 'Full size. All 5 checklist items confirmed.'
+      : tier === 'B'
+        ? 'Half size. Missing ' + (total - passed) + ' checklist item(s).'
+        : 'Lotto size only. Low conviction — ' + passed + '/5 items.'
+  };
+}
+
 // ─── Guardrail Check ─────────────────────────────────────────────────────────
 
 function checkGuardrails(proposal) {
@@ -200,6 +357,13 @@ async function submitTrade(proposal) {
     };
   }
 
+  // ── A+ Checklist Scoring ──
+  var heatseekerSignal = await getHeatseekerData(proposal.signal_id);
+  var checklistResult = scoreSetupChecklist(proposal, heatseekerSignal);
+  entry.checklist_score = checklistResult;
+  entry.sizing_tier = checklistResult.tier;
+  entry.max_risk_pct = checklistResult.max_risk_pct;
+
   // ── Full auto mode: approve and send to execution ──
   if (mode.auto_approve && riskResult.approved) {
     entry.status = 'auto_approved';
@@ -213,6 +377,9 @@ async function submitTrade(proposal) {
       approval_id: entry.id,
       status: 'auto_approved',
       message: 'Automatically approved and sent to execution',
+      sizing_tier: checklistResult.tier,
+      sizing_recommendation: checklistResult.recommendation,
+      checklist_score: checklistResult.score_pct + '% (' + checklistResult.passed + '/' + checklistResult.total + ')',
       execution_result: execResult,
       risk_summary: riskResult.risk_summary
     };
@@ -240,6 +407,9 @@ async function submitTrade(proposal) {
     approval_id: entry.id,
     status: 'pending_approval',
     message: 'Trade queued for human approval',
+    sizing_tier: checklistResult.tier,
+    sizing_recommendation: checklistResult.recommendation,
+    checklist_score: checklistResult.score_pct + '% (' + checklistResult.passed + '/' + checklistResult.total + ')',
     expires_at: entry.expires_at,
     risk_summary: riskResult.risk_summary,
     risk_warnings: riskResult.warnings || []
@@ -300,7 +470,8 @@ app.get('/info', (req, res) => {
       'GET /decisions — decision history',
       'GET /stats — approval statistics',
       'POST /mode — change approval mode (semi_auto, full_auto, observe_only)',
-      'POST /clear-queue — clear all pending approvals'
+      'POST /clear-queue — clear all pending approvals',
+      'POST /checklist — score a setup against the A+ checklist (pre-check before submitting)'
     ]
   });
 });
@@ -435,6 +606,36 @@ app.post('/clear-queue', (req, res) => {
   });
   approvalQueue = [];
   res.json({ cleared: count, timestamp: now() });
+});
+
+// ─── A+ Checklist Endpoint ─────────────────────────────────────────────────
+
+app.post('/checklist', async (req, res) => {
+  const proposal = req.body;
+  if (!proposal.direction) {
+    return res.status(400).json({
+      error: 'Required: direction. Recommended: signal_id, map_grade, hourly_confirmation, three_min_confirmation, vix_confirmed, trinity_confirmed',
+      example: {
+        signal_id: 'HS-abc123',
+        direction: 'long',
+        map_grade: 'A+',
+        hourly_confirmation: 'Double bottom at 5840 on hourly chart',
+        three_min_confirmation: 'Double bottom confirmed on 3-min at 5841',
+        vix_confirmed: 'VIX at 18.5 dropping — supportive for longs',
+        trinity_confirmed: 'SPX/SPY/QQQ all pulling bullish, 2.3:1 ratio'
+      }
+    });
+  }
+
+  const heatseekerSignal = await getHeatseekerData(proposal.signal_id);
+  const result = scoreSetupChecklist(proposal, heatseekerSignal);
+
+  res.json({
+    ...result,
+    signal_id: proposal.signal_id || null,
+    direction: proposal.direction,
+    note: 'Use this to pre-check setup quality before submitting for approval. Pass all 5 items for A+ sizing.'
+  });
 });
 
 // ─── Startup ─────────────────────────────────────────────────────────────────
