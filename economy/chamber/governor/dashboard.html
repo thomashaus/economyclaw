@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EconomyClaw — Supply Economy Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0f; color: #e0e0e0; padding: 20px; }
+  h1 { font-size: 1.4em; color: #00d4ff; margin-bottom: 4px; }
+  h2 { font-size: 1.1em; color: #8899aa; margin: 20px 0 10px; border-bottom: 1px solid #1a2030; padding-bottom: 6px; }
+  .subtitle { color: #556677; font-size: 0.85em; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .card { background: #12141f; border: 1px solid #1a2030; border-radius: 8px; padding: 16px; }
+  .card-label { font-size: 0.75em; color: #556677; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card-value { font-size: 1.8em; font-weight: 700; margin: 4px 0; }
+  .green { color: #00e676; } .yellow { color: #ffab00; } .red { color: #ff5252; } .blue { color: #448aff; } .cyan { color: #00d4ff; }
+  .progress-bar { background: #1a2030; border-radius: 4px; height: 8px; margin-top: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+  .fill-green { background: linear-gradient(90deg, #00c853, #00e676); }
+  .fill-blue { background: linear-gradient(90deg, #2979ff, #448aff); }
+  .fill-cyan { background: linear-gradient(90deg, #00b8d4, #00d4ff); }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #1a2030; font-size: 0.85em; }
+  th { color: #556677; font-weight: 600; text-transform: uppercase; font-size: 0.7em; letter-spacing: 0.05em; }
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600; }
+  .badge-online { background: #00382a; color: #00e676; } .badge-offline { background: #3a0a0a; color: #ff5252; }
+  .badge-critical { background: #3a1a00; color: #ffab00; } .badge-high { background: #1a2a3a; color: #448aff; }
+  .badge-medium { background: #1a1a2a; color: #7c4dff; } .badge-pending { background: #2a2a1a; color: #ffab00; }
+  .badge-routed { background: #1a2a2a; color: #00d4ff; } .badge-completed { background: #00382a; color: #00e676; }
+  .question-card { background: #1a1a0a; border: 1px solid #3a3a1a; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; }
+  .question-card .from { font-size: 0.75em; color: #ffab00; margin-bottom: 4px; }
+  .question-card .q { font-size: 0.9em; margin-bottom: 6px; }
+  .question-card .options { font-size: 0.8em; color: #8899aa; }
+  .answer-input { width: 100%; padding: 6px 10px; background: #0a0a0f; border: 1px solid #3a3a1a; border-radius: 4px; color: #e0e0e0; font-size: 0.85em; margin-top: 6px; }
+  .btn { padding: 4px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8em; font-weight: 600; }
+  .btn-answer { background: #00d4ff; color: #0a0a0f; margin-top: 6px; }
+  .btn-answer:hover { background: #00b8d4; }
+  .refresh-note { color: #334455; font-size: 0.7em; margin-top: 20px; text-align: center; }
+  #last-refresh { color: #556677; }
+</style>
+</head>
+<body>
+
+<h1>EconomyClaw Supply Economy</h1>
+<div class="subtitle">Governor Dashboard — EC-Prime | <span id="last-refresh">Loading...</span></div>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-label">Services Online</div>
+    <div class="card-value" id="services-online">--</div>
+  </div>
+  <div class="card">
+    <div class="card-label">MVP Progress</div>
+    <div class="card-value cyan" id="mvp-progress">--</div>
+    <div class="progress-bar"><div class="progress-fill fill-cyan" id="mvp-bar" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Full Autonomy Progress</div>
+    <div class="card-value blue" id="final-progress">--</div>
+    <div class="progress-bar"><div class="progress-fill fill-blue" id="final-bar" style="width:0%"></div></div>
+  </div>
+</div>
+
+<h2>Work Packages</h2>
+<table>
+  <thead><tr><th>ID</th><th>Capability</th><th>Priority</th><th>Blocks</th><th>Status</th><th>Progress</th><th>Assigned To</th></tr></thead>
+  <tbody id="work-table"></tbody>
+</table>
+
+<h2>Pending Questions <span id="q-count" style="color:#ffab00"></span></h2>
+<div id="questions-container"><p style="color:#556677;font-size:0.85em;">No pending questions.</p></div>
+
+<h2>Service Health</h2>
+<table>
+  <thead><tr><th>Service</th><th>Sector</th><th>Port</th><th>Status</th></tr></thead>
+  <tbody id="services-table"></tbody>
+</table>
+
+<div class="refresh-note">Auto-refreshes every 10 seconds</div>
+
+<script>
+const API = window.location.hostname === 'localhost'
+  ? 'http://localhost:8001'
+  : 'http://192.168.68.76:8001';
+
+function statusBadge(status) {
+  const cls = {
+    online: 'badge-online', offline: 'badge-offline', pending_decomposition: 'badge-pending',
+    routed: 'badge-routed', in_progress: 'badge-high', completed: 'badge-completed',
+    critical: 'badge-critical', high: 'badge-high', medium: 'badge-medium'
+  };
+  return '<span class="status-badge ' + (cls[status] || 'badge-pending') + '">' + status + '</span>';
+}
+
+async function refresh() {
+  try {
+    const res = await fetch(API + '/dashboard');
+    const d = await res.json();
+
+    document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+    document.getElementById('services-online').innerHTML = '<span class="green">' + d.economy.services_online + '</span>';
+    document.getElementById('mvp-progress').textContent = d.work.mvp_progress_pct + '%';
+    document.getElementById('mvp-bar').style.width = d.work.mvp_progress_pct + '%';
+    document.getElementById('final-progress').textContent = d.work.final_progress_pct + '%';
+    document.getElementById('final-bar').style.width = d.work.final_progress_pct + '%';
+
+    // Work packages
+    const wt = document.getElementById('work-table');
+    wt.innerHTML = d.work.packages.map(function(wp) {
+      return '<tr><td style="font-family:monospace;font-size:0.8em">' + wp.capability_id + '</td><td>' + wp.name +
+        '</td><td>' + statusBadge(wp.priority) + '</td><td>' + wp.blocks +
+        '</td><td>' + statusBadge(wp.status) + '</td><td>' + wp.progress_pct + '%</td><td>' +
+        (wp.assigned_services.length > 0 ? wp.assigned_services.join(', ') : '—') + '</td></tr>';
+    }).join('');
+    if (d.work.packages.length === 0) {
+      wt.innerHTML = '<tr><td colspan="7" style="color:#556677">No work packages yet. Submit requirements via POST /submit-requirements.</td></tr>';
+    }
+
+    // Questions
+    const qc = document.getElementById('questions-container');
+    const pending = d.questions.pending;
+    document.getElementById('q-count').textContent = pending.length > 0 ? '(' + pending.length + ')' : '';
+    if (pending.length === 0) {
+      qc.innerHTML = '<p style="color:#556677;font-size:0.85em;">No pending questions. Supply economy has what it needs.</p>';
+    } else {
+      qc.innerHTML = pending.map(function(q) {
+        var html = '<div class="question-card"><div class="from">From: ' + q.asked_by + ' | ' + new Date(q.asked_at).toLocaleString() + '</div>';
+        html += '<div class="q">' + q.question + '</div>';
+        if (q.options) html += '<div class="options">Options: ' + q.options.join(' | ') + '</div>';
+        html += '<input class="answer-input" id="answer-' + q.id + '" placeholder="Type your answer...">';
+        html += '<button class="btn btn-answer" onclick="answerQuestion(\'' + q.id + '\')">Answer</button>';
+        html += '</div>';
+        return html;
+      }).join('');
+    }
+
+    // Services
+    const st = document.getElementById('services-table');
+    st.innerHTML = Object.entries(d.economy.services).map(function(entry) {
+      var name = entry[0], s = entry[1];
+      return '<tr><td>' + name + '</td><td>' + (s.sector || '—') + '</td><td>' + s.port + '</td><td>' + statusBadge(s.status) + '</td></tr>';
+    }).join('');
+
+  } catch (err) {
+    document.getElementById('last-refresh').textContent = 'Error: ' + err.message;
+  }
+}
+
+async function answerQuestion(qId) {
+  var input = document.getElementById('answer-' + qId);
+  if (!input || !input.value.trim()) return;
+  try {
+    await fetch(API + '/questions/' + qId + '/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer: input.value.trim(), answered_by: 'human:DB' })
+    });
+    refresh();
+  } catch (err) {
+    alert('Failed to submit answer: ' + err.message);
+  }
+}
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>

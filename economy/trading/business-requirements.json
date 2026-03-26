@@ -1,0 +1,147 @@
+{
+  "version": "1.0",
+  "created": "2026-03-25",
+  "sector": "trading",
+  "submitted_by": "human:DB",
+
+  "mission": "Semi-autonomous to fully autonomous trading of ES/MES and NQ/MNQ futures through prop firm accounts, using the Heatseeker GEX/VEX methodology as the primary signal source.",
+
+  "desired_outcomes": {
+    "mvp": {
+      "label": "MVP — Semi-Autonomous, Human Approved",
+      "description": "System generates trade proposals with confidence scoring and sizing recommendations. Human reviews and approves/rejects. System executes approved trades and manages risk.",
+      "success_criteria": [
+        "Generate trade proposals from Heatseeker analysis with confidence score and sizing tier",
+        "Present proposals to human with enough context to make a fast yes/no decision",
+        "Execute approved trades with proper bracket orders (stop + target)",
+        "Enforce all prop firm rules automatically (drawdown, consistency, news blackout, no hedging)",
+        "Track P&L and daily exposure in real time"
+      ]
+    },
+    "final": {
+      "label": "Final — Fully Autonomous",
+      "description": "System identifies setups, scores them, sizes them, and executes without human approval. Human monitors via dashboard and can override or kill-switch.",
+      "success_criteria": [
+        "Autonomously identify high-probability trade setups",
+        "Score setup quality and determine appropriate sizing",
+        "Execute trades without human gate when confidence exceeds threshold",
+        "Self-monitor for regime changes and adapt (news, VIX spikes, session transitions)",
+        "Provide real-time dashboard for human oversight",
+        "Support kill-switch for immediate position flattening"
+      ]
+    }
+  },
+
+  "capabilities_needed": [
+    {
+      "id": "CAP-001",
+      "name": "Setup Quality Assessment",
+      "description": "Ability to assess the quality of a potential trade setup and assign a confidence tier (A+, B, C). This determines position sizing.",
+      "current_state": "Hardcoded 5-item checklist in trade-approval. Items 1-2 are human-attestation free text. Items 3-5 pull from heatseeker data.",
+      "desired_state": "Programmatic assessment using market data, chart structure, Heatseeker signals, VIX regime, and cross-ticker alignment. No human attestation required for data-available items.",
+      "priority": "critical",
+      "blocks": "final"
+    },
+    {
+      "id": "CAP-002",
+      "name": "Chart Structure Detection",
+      "description": "Ability to identify key price patterns (double bottom/top, S&R levels, session levels) from historical candle data on multiple timeframes (hourly, 3-minute).",
+      "current_state": "Not implemented. Market-data tracks live prices and session levels but has no historical candle storage or pattern detection.",
+      "desired_state": "Historical candle storage (hourly + 3-min), swing point detection, double bottom/top pattern matching, S&R level identification with touch-count scoring.",
+      "priority": "critical",
+      "blocks": "final"
+    },
+    {
+      "id": "CAP-003",
+      "name": "Real-Time Market Data Feed",
+      "description": "Live price data for ES, MES, NQ, MNQ with sub-second latency. Required for stop order monitoring, bracket management, and real-time risk tracking.",
+      "current_state": "Simulated. Market-data service returns mock prices.",
+      "desired_state": "Real market data feed (TopstepX API or third-party provider). Prices available via internal API for all trading services.",
+      "priority": "critical",
+      "blocks": "mvp"
+    },
+    {
+      "id": "CAP-004",
+      "name": "Broker API Integration",
+      "description": "Ability to place, modify, and cancel orders through TopstepX API. Support for limit, market, stop, and bracket orders across multiple accounts.",
+      "current_state": "Placeholder adapter in trade-execution. API endpoints documented but not implemented.",
+      "desired_state": "Working TopstepX adapter with auth, order placement, position tracking, SignalR fill monitoring, and multi-account fan-out.",
+      "priority": "critical",
+      "blocks": "mvp"
+    },
+    {
+      "id": "CAP-005",
+      "name": "Economic Calendar Integration",
+      "description": "Awareness of upcoming high-impact economic events for news blackout enforcement.",
+      "current_state": "Manual list of event types in risk-management config. No actual calendar dates.",
+      "desired_state": "Auto-populated economic calendar with dates/times for upcoming events. Risk management can query 'any events in next N minutes?' and get a real answer.",
+      "priority": "high",
+      "blocks": "mvp"
+    },
+    {
+      "id": "CAP-006",
+      "name": "Trading Dashboard",
+      "description": "Real-time visual dashboard for human oversight. Shows open positions, P&L, active signals, risk status, and system health.",
+      "current_state": "No dashboard. Everything is curl commands to individual service APIs.",
+      "desired_state": "Web-based dashboard accessible from any device. Real-time updates. Kill-switch button. Position management controls.",
+      "priority": "high",
+      "blocks": "mvp"
+    },
+    {
+      "id": "CAP-007",
+      "name": "Backtesting Engine",
+      "description": "Ability to test trading strategies against historical data before deploying them live.",
+      "current_state": "Not implemented.",
+      "desired_state": "Feed historical candle + GEX/VEX data through the pipeline. Score strategy performance (win rate, avg R:R, max drawdown, consistency rule compliance).",
+      "priority": "high",
+      "blocks": "final"
+    },
+    {
+      "id": "CAP-008",
+      "name": "Heatseeker Data Ingestion",
+      "description": "Automated ingestion of GEX/VEX map data from Heatseeker source (currently manual screenshot review).",
+      "current_state": "Manual. Human reviews Heatseeker maps and submits analysis via POST /analyze.",
+      "desired_state": "Automated or semi-automated ingestion. Could be screen capture + OCR, API if available, or structured data feed.",
+      "priority": "medium",
+      "blocks": "final"
+    }
+  ],
+
+  "constraints": {
+    "prop_firm_rules": {
+      "description": "All trading must comply with TopstepX prop firm rules at all times. Violation = account loss.",
+      "rules": [
+        "Trailing drawdown (never breach the floor)",
+        "Consistency rule (no single day > 30% of profit target)",
+        "No hedging (unidirectional only within correlated pairs)",
+        "Contract limits per instrument per stage",
+        "Daily loss limits"
+      ],
+      "enforcement": "These are non-negotiable. The system must hard-block any action that would violate these rules. No override, no force flag."
+    },
+    "risk_hierarchy": {
+      "description": "Order of priority when rules conflict.",
+      "hierarchy": [
+        "1. Prop firm rule compliance (survival)",
+        "2. Daily loss limit preservation",
+        "3. Position sizing per confidence tier",
+        "4. Signal quality / entry timing",
+        "5. Profit optimization"
+      ]
+    },
+    "instruments": ["ES", "MES", "NQ", "MNQ"],
+    "sessions": "Futures hours with Asia/London/NY session awareness. Off-hours: micros only.",
+    "initial_stage": "combine",
+    "initial_balance": 50000
+  },
+
+  "pipeline_services": {
+    "market-data": { "port": 8110, "role": "Price data and session tracking" },
+    "heatseeker": { "port": 8111, "role": "GEX/VEX analysis and signal generation" },
+    "risk-management": { "port": 8112, "role": "Risk checks and prop firm rule enforcement" },
+    "trade-approval": { "port": 8113, "role": "Human gate and setup quality scoring" },
+    "trade-execution": { "port": 8114, "role": "Order execution and bracket management" }
+  },
+
+  "supply_economy_ask": "The trading pipeline defines WHAT it needs (the capabilities above). The supply economy determines HOW to deliver each capability — which services research it, which services build it, how to test it, and how to deploy it. The Governor decomposes these requirements into work packages for supply services."
+}
