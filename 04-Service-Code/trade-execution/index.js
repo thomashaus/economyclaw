@@ -42,15 +42,20 @@ async function notifyRiskManagement(action, data) {
       ? config.risk_management_url + '/position/open'
       : config.risk_management_url + '/position/' + data.position_id + '/close';
 
-    await fetch(endpoint, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
       signal: AbortSignal.timeout(3000)
     });
+    if (res.ok) {
+      const result = await res.json();
+      return result;
+    }
   } catch (err) {
     console.log('[trade-execution] Risk notification failed: ' + err.message);
   }
+  return null;
 }
 
 async function getCurrentPrice(symbol) {
@@ -242,7 +247,7 @@ async function executeTrade(proposal) {
     }
 
     // Notify risk management of open position
-    await notifyRiskManagement('open', {
+    const riskPosition = await notifyRiskManagement('open', {
       symbol: order.symbol,
       direction: order.direction,
       contracts: order.contracts,
@@ -251,6 +256,9 @@ async function executeTrade(proposal) {
       target_price: order.target_price,
       signal_id: order.signal_id
     });
+    if (riskPosition && riskPosition.id) {
+      order.risk_position_id = riskPosition.id;
+    }
 
     return {
       order_id: order.id,
