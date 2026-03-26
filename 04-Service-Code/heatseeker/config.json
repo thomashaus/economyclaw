@@ -1,24 +1,385 @@
 {
-  "version": "0.5",
+  "version": "1.0",
   "machine": "ec-prime",
   "port": 8111,
   "sector": "trading",
   "instruments": ["ES", "MES", "NQ", "MNQ"],
+
   "analysis_mode": {
     "market_hours": "heatseeker_gex_vex",
     "off_hours": "price_action_ta_only"
   },
-  "heatseeker": {
-    "map_quality_grades": ["A+", "B", "C", "F"],
-    "min_trade_grade": "B",
-    "min_rr_ratio": 3.0,
-    "patterns": [
-      "rug_pull", "reverse_rug_slingshot", "gatekeeper_rejection",
-      "whipsaw", "beach_ball", "strong_directional_trend", "floor_bounce"
-    ],
-    "gatekeeper_3test_rule": true,
-    "node_washoff_enabled": true
+
+  "map_grading": {
+    "grades": {
+      "A+": {
+        "description": "Clean, high-conviction map with clear directional bias",
+        "confidence_base": 0.9,
+        "sizing": "aggressive",
+        "criteria": "King node dominant, minimal noise, clear air pockets or floors, VEX aligned, pattern stacks cleanly"
+      },
+      "B": {
+        "description": "Tradeable but with some ambiguity or conflicting signals",
+        "confidence_base": 0.7,
+        "sizing": "standard",
+        "criteria": "King identifiable but contested, some noise, mixed VEX, pattern present but not textbook"
+      },
+      "C": {
+        "description": "Marginal — trade only with extreme selectivity",
+        "confidence_base": 0.5,
+        "sizing": "speculative",
+        "criteria": "No clear King, multiple conflicting patterns, VEX misaligned, choppy node structure"
+      },
+      "F": {
+        "description": "Untradeable — cash is a position",
+        "confidence_base": 0,
+        "sizing": "none",
+        "criteria": "Chaotic node structure, no identifiable pattern, extreme noise, or data quality issues"
+      }
+    },
+    "min_trade_grade": "B"
   },
+
+  "patterns": {
+    "rug_pull": {
+      "name": "Rug Pull",
+      "structure": "+GEX ceiling OVER -GEX fuel (purple below yellow)",
+      "bias": "bearish",
+      "key_rule": "Air pocket below = free-fall. Purple amplifies the selloff after yellow rejection.",
+      "trigger": "Price rises through purple (amplified), hits yellow ceiling, gets rejected, falls back through same purple",
+      "real_trade_analogy": "SPY 10/7/25, SPX 3000% Crash"
+    },
+    "reverse_rug_slingshot": {
+      "name": "Reverse Rug / Slingshot",
+      "structure": "-GEX fuel OVER +GEX floor (purple above yellow)",
+      "bias": "bullish",
+      "key_rule": "Clear Skies above = maximum velocity slingshot. Purple amplifies the rally after yellow bounce.",
+      "trigger": "Price drops through purple (amplified), hits yellow floor, bounces, launches back through same purple",
+      "real_trade_analogy": "LLY 750→800"
+    },
+    "gatekeeper_rejection": {
+      "name": "Gatekeeper Rejection",
+      "structure": "+GEX node between spot and target",
+      "bias": "fade_approach",
+      "key_rule": "66% rejection on 1st/2nd test. FLIPS to 66% breakthrough on 3rd test.",
+      "trigger": "Price approaches +GEX node — dealers sell to hedge (resistance) or buy to hedge (support)",
+      "three_test_rule": true,
+      "rejection_probability": { "test_1": 0.66, "test_2": 0.66, "test_3_breakthrough": 0.66 },
+      "real_trade_analogy": "SPX 6600 scalp (105)"
+    },
+    "whipsaw": {
+      "name": "Whipsaw",
+      "structure": "Dual opposing nodes, roughly equal magnitude",
+      "bias": "range",
+      "key_rule": "Absolute value matters more than sign. Expect chop between the two nodes.",
+      "trigger": "Price oscillates between two equal-magnitude nodes with no clear winner",
+      "real_trade_analogy": "SPX 6485/6500"
+    },
+    "beach_ball": {
+      "name": "Beach Ball",
+      "structure": "Price trapped in -GEX pit with delta saturation",
+      "bias": "bullish_reversal",
+      "key_rule": "3:1 R/R minimum. Violent snap-back when delta unwinds.",
+      "trigger": "Price held underwater by negative gamma, dealers short gamma saturates, explosive reversal",
+      "real_trade_analogy": "SPX 6630/6640"
+    },
+    "rainbow_road": {
+      "name": "Rainbow Road",
+      "structure": "VEX >> GEX magnitude, VIX expanding",
+      "bias": "trend",
+      "key_rule": "GEX levels become UNRELIABLE. VEX takes over as primary driver. Trade trend direction only.",
+      "trigger": "VIX rising from elevated (>20), vanna overwhelms gamma, GEX floors crack",
+      "warning": "Explicitly warn that GEX levels are unreliable in this regime",
+      "real_trade_analogy": "SPX 3000% VEX override"
+    },
+    "strong_directional_trend": {
+      "name": "Strong Directional Trend",
+      "structure": "King far from spot, void on one side, no mean-reversion setup",
+      "bias": "directional",
+      "key_rule": "No mean-reversion. Let the trend work. Widest R/R setups.",
+      "trigger": "Clear directional void between spot and King with no opposing nodes",
+      "real_trade_analogy": "SPX 9:1 R/R (104)"
+    },
+    "floor_bounce": {
+      "name": "Floor Bounce",
+      "structure": "-GEX floor with empty basement below (no lower nodes)",
+      "bias": "bullish_reversal",
+      "key_rule": "Node shrinks after bounce = confirmation. Node grows = divergence warning.",
+      "trigger": "Price hits -GEX floor at the bottom of the map, no nodes below, dealers buy the dip",
+      "real_trade_analogy": "SPY 687/QQQ 616 (Jan 14)"
+    }
+  },
+
+  "node_types": {
+    "yellow_positive_gex": {
+      "name": "Deflective (Yellow / +GEX)",
+      "color": "yellow",
+      "dealer_action": "Hedges AGAINST the move — deflects price away",
+      "as_ceiling": "Dealers SELL to hedge as calls approach → resistance",
+      "as_floor": "Dealers BUY to hedge as puts approach → support",
+      "critical_rule": "Same node, opposite behavior depending on approach direction. Always identify approach side."
+    },
+    "purple_negative_gex": {
+      "name": "Amplifying (Purple / -GEX)",
+      "color": "purple",
+      "dealer_action": "Hedges WITH the move — amplifies whatever direction price is moving",
+      "behavior": "Pro-cyclical fuel. NOT a wall, NOT directional. Purely momentum amplifier.",
+      "critical_rule": "Trade WITH momentum through purple, NEVER against it."
+    }
+  },
+
+  "node_behaviors_cheat_sheet": [
+    {
+      "id": 1,
+      "name": "Gatekeeper Rejection",
+      "setup": "Yellow above, price rising from below",
+      "dealer_action": "SELL to hedge as calls approach the money → resistance",
+      "probability": "66% rejection on 1st/2nd test; FLIPS to 66% breakthrough on 3rd test",
+      "action": "Fade the approach on 1st/2nd test. Do NOT fade the 3rd test."
+    },
+    {
+      "id": 2,
+      "name": "Floor Bounce",
+      "setup": "Yellow below, price dropping from above",
+      "dealer_action": "BUY to hedge as puts approach the money → support",
+      "probability": "66% bounce probability on 1st/2nd test",
+      "action": "Buy the dip at the node on red candles."
+    },
+    {
+      "id": 3,
+      "name": "Acceleration Zone",
+      "setup": "Purple nodes, either direction",
+      "dealer_action": "Hedge WITH the move → amplifies direction",
+      "probability": "N/A — not directional, purely pro-cyclical",
+      "action": "Trade with momentum through purple, never against it."
+    },
+    {
+      "id": 4,
+      "name": "Rug Pull",
+      "setup": "Yellow ceiling OVER purple fuel",
+      "dealer_action": "Price amplified on approach through purple, rejected at yellow, amplified again on retreat",
+      "probability": "High if air pocket exists below",
+      "action": "Short on rejection of the yellow ceiling."
+    },
+    {
+      "id": 5,
+      "name": "Reverse Rug / Slingshot",
+      "setup": "Purple fuel OVER yellow floor",
+      "dealer_action": "Price amplified on approach through purple, bounces at yellow, amplified on rally",
+      "probability": "High if Clear Skies above (no yellow resistance)",
+      "action": "Long at the yellow floor, ride through purple."
+    },
+    {
+      "id": 6,
+      "name": "Reinforced Floor",
+      "setup": "+GEX / +VEX, VIX dropping",
+      "dealer_action": "Gamma buys dip AND vanna buys as vol drops → both forces aligned",
+      "vix_modifier": "VIX HIGH + dropping = Maximum reinforcement. VIX LOW + dropping = Pure gamma floor.",
+      "action": "High confidence. Trust the floor. Full sizing when VIX > 20."
+    },
+    {
+      "id": 7,
+      "name": "Eroding Floor",
+      "setup": "+GEX / -VEX, VIX dropping",
+      "dealer_action": "Gamma buys dip BUT vanna sells as vol drops → forces fight",
+      "vix_modifier": "VIX HIGH + dropping = FASTEST erosion. VIX LOW + dropping = Negligible erosion.",
+      "regime_flip": "If VIX reverses and RISES, -VEX at floor BUYS → paradoxically strengthens (temporarily)",
+      "action": "Reduce size when VIX > 20. If VIX < 20, treat as normal gamma floor."
+    },
+    {
+      "id": 8,
+      "name": "Dealer Full Control",
+      "setup": "+GEX / +VEX at same strike",
+      "dealer_action": "Both gamma AND vanna pull price to this strike",
+      "behavior": "Strongest magnet possible → pin and drift",
+      "action": "Primary target. Trust the magnet. This is THE level for the session."
+    },
+    {
+      "id": 9,
+      "name": "Dual Negative",
+      "setup": "-GEX / -VEX at same strike",
+      "dealer_action": "BOTH forces pro-cyclical → maximum danger AND maximum opportunity",
+      "behavior": "Violently amplifies whichever direction price is moving. Price CANNOT stay here.",
+      "action": "Size for zero. Enter only with clear directional bias confirmed."
+    }
+  ],
+
+  "dealer_behavior_reference": [
+    { "condition": "+GEX below spot, IV dropping", "dealer_action": "Buys dips", "market_behavior": "Stabilizing, mean-reversion" },
+    { "condition": "-GEX below spot, IV dropping", "dealer_action": "Sells dips", "market_behavior": "Pro-cyclical acceleration" },
+    { "condition": "+VEX below spot, IV dropping", "dealer_action": "Buys → support", "market_behavior": "Supportive in calm" },
+    { "condition": "-VEX below spot, IV dropping", "dealer_action": "Sells → fragile floor", "market_behavior": "Whipsaw in calm" },
+    { "condition": "+VEX above spot, IV rising", "dealer_action": "Sells → suppressive", "market_behavior": "Resistance hardening" },
+    { "condition": "-VEX above spot, IV rising", "dealer_action": "Buys → squeeze fuel", "market_behavior": "Violent rally risk" },
+    { "condition": "-GEX + -VEX same strike", "dealer_action": "Both pro-cyclical", "market_behavior": "Maximum danger/opportunity" },
+    { "condition": "+GEX + +VEX same strike", "dealer_action": "Dealer full control", "market_behavior": "Pin and drift" }
+  ],
+
+  "vix_matrix": {
+    "high_dropping": {
+      "vix_level": "above_20",
+      "vix_direction": "dropping",
+      "regime": "Melt-up after panic",
+      "dominant_force": "vanna",
+      "vex_modifier_strength": "LOUD",
+      "description": "Large vanna flows. +VEX nodes become powerful magnets (large dealer buy flow). -VEX nodes erode FASTER. Most favorable for slingshot-to-dual-positive-King trades.",
+      "gex_reliability": "high"
+    },
+    "high_rising": {
+      "vix_level": "above_20",
+      "vix_direction": "rising",
+      "regime": "Rainbow Road",
+      "dominant_force": "vanna",
+      "vex_modifier_strength": "LOUD",
+      "description": "Large vanna sell flows at +VEX nodes. GEX floors LOSE reliability. +GEX/-VEX floors can crack violently. Switch to VEX nodes and trend direction only.",
+      "gex_reliability": "LOW — explicitly warn user",
+      "warning": "GEX levels are unreliable. Trade VEX and trend only."
+    },
+    "low_dropping": {
+      "vix_level": "below_20",
+      "vix_direction": "dropping",
+      "regime": "Gamma dominant calm",
+      "dominant_force": "gamma",
+      "vex_modifier_strength": "quiet",
+      "description": "Small vanna flows. Gamma dominates. VEX alignment barely matters. Trust the GEX map.",
+      "gex_reliability": "high"
+    },
+    "low_rising": {
+      "vix_level": "below_20",
+      "vix_direction": "rising",
+      "regime": "Gamma dominant with VIX transition watch",
+      "dominant_force": "gamma",
+      "vex_modifier_strength": "quiet",
+      "description": "Small vanna flows, gamma still dominates. WATCH for VIX crossing above 20 — vanna suddenly turns on.",
+      "gex_reliability": "high",
+      "transition_warning": "If VIX crosses above 20, vanna activates and node behavior changes."
+    }
+  },
+
+  "gatekeeper_vex_interaction": {
+    "positive_gex_ceiling": {
+      "positive_vex_vix_dropping": { "effect": "Resistance WEAKENS (vanna buys, fighting gamma sells)", "outcome": "Breakout more likely" },
+      "positive_vex_vix_rising": { "effect": "Resistance STRENGTHENS (both sell)", "outcome": "Strongest rejection" },
+      "negative_vex_vix_dropping": { "effect": "Resistance STRENGTHENS (both sell)", "outcome": "Strong rejection" },
+      "negative_vex_vix_rising": { "effect": "Resistance WEAKENS (vanna buys = squeeze fuel)", "outcome": "Elastic ceiling, breakout more likely" }
+    },
+    "positive_gex_floor": {
+      "positive_vex_vix_dropping": { "effect": "Floor STRENGTHENS (both buy)", "outcome": "Bounce more likely" },
+      "positive_vex_vix_rising": { "effect": "Floor WEAKENS (vanna sells, fighting gamma buys)", "outcome": "Break more likely" },
+      "negative_vex_vix_dropping": { "effect": "Floor WEAKENS (vanna sells, fighting gamma buys)", "outcome": "Eroding floor" },
+      "negative_vex_vix_rising": { "effect": "Floor STRENGTHENS (both buy)", "outcome": "Bounce more likely" }
+    },
+    "negative_gex_node": {
+      "positive_vex_vix_dropping": { "effect": "Both accelerate upward", "outcome": "BIG overshoot, then violent snap-back (Beach Ball)" },
+      "positive_vex_vix_rising": { "effect": "Forces fight", "outcome": "Dampened overshoot, mild rejection" },
+      "negative_vex_vix_dropping": { "effect": "Forces fight", "outcome": "Dampened, mild rejection" },
+      "negative_vex_vix_rising": { "effect": "MAXIMUM acceleration", "outcome": "May NOT reject at all (full squeeze through)" }
+    },
+    "magnitude_threshold": "These VEX modifiers ONLY matter meaningfully when VIX > 20. Below 20, gatekeeper behaves on GEX alone."
+  },
+
+  "vex_quality_adjustment": {
+    "dual_positive": { "gex": "+", "vex": "+", "multiplier": 1.0, "description": "Full effective pull" },
+    "misaligned_pos_gex": { "gex": "+", "vex": "-", "multiplier": 0.5, "description": "Half pull — vanna fights gamma, creates chop" },
+    "dual_negative": { "gex": "-", "vex": "-", "multiplier": 1.0, "description": "Full effective pull — dangerous/accelerating" },
+    "misaligned_neg_gex": { "gex": "-", "vex": "+", "multiplier": 0.5, "description": "Half pull" }
+  },
+
+  "trinity_alignment": {
+    "tickers": ["SPX", "SPY", "QQQ"],
+    "enabled": true,
+    "rules": {
+      "dominant_threshold": 2.0,
+      "competitive_range": [0.5, 2.0],
+      "subordinate_threshold": 0.5
+    },
+    "target_adjustments": {
+      "dominant": { "target": "Full target at King", "sizing": "standard_or_aggressive" },
+      "competitive": { "target": "Reduce to 50-70% of distance to King", "sizing": "speculative_downgrade" },
+      "subordinate": { "target": "Do NOT target King — use nearest interim node", "sizing": "speculative_or_sit_out" }
+    },
+    "convergence_rule": "When Kings diverge, expect convergence toward weighted midpoint. Target = spot + (distance_to_king × your_share_of_total_pull)"
+  },
+
+  "strike_selection_by_map_type": {
+    "balanced": { "description": "Symmetrical nodes both sides of spot", "strike_selection": "ATM or slightly OTM" },
+    "skewed": { "description": "Strong directional bias, one side dominant", "strike_selection": "Aggressive OTM acceptable" },
+    "tight_range": { "description": "10-15 point range, nodes close together", "strike_selection": "ATM only — theta crushes OTM in tight ranges" },
+    "wide_trend": { "description": "50+ point expected move, clear voids", "strike_selection": "OTM in trend direction for gamma acceleration" }
+  },
+
+  "position_sizing": {
+    "speculative": { "pct": 2.5, "trigger": "Marginal setup, single confluence point" },
+    "standard": { "pct": 5.0, "trigger": "Stacked confluence — multiple signals align" },
+    "aggressive": { "pct": 10.0, "trigger": "King node + vol regime aligned + Trinity confirmed. Maximum conviction only." },
+    "rule": "Never oversize. Size for zero on 0DTE."
+  },
+
+  "ten_commandments": [
+    "Thou shalt not trade an F-grade map. Cash is a position.",
+    "Thou shalt not enter mid-range. Only at floors and ceilings.",
+    "Thou shalt respect the 3rd Test Rule — it inverts probability.",
+    "Thou shalt not confuse GEX and VEX values — they come from different screens.",
+    "Thou shalt check VIX level AND direction before trusting VEX modifiers.",
+    "Thou shalt not set targets at a King node without cross-ticker magnitude check.",
+    "Thou shalt go long on RED candles, short on GREEN candles.",
+    "Thou shalt not let a green trade go red.",
+    "Thou shalt lowball all entries: $0.10-$0.20 below the bid on limit buys.",
+    "Thou shalt not re-trade a level after it has washed off."
+  ],
+
+  "critical_rules": [
+    "Negative GEX does NOT equal bearish automatically. It means pro-cyclical — amplifies whatever direction is happening.",
+    "Always check whether a node is on its 1st, 2nd, or 3rd test — the 3rd test rule inverts probability.",
+    "In VEX-dominated regimes (Rainbow Road), explicitly warn that GEX levels are unreliable.",
+    "For any far-OTM node cited as a target, apply the Speculative/Decoy Node filter.",
+    "Do not recommend trades in the middle of a range — only at floors and ceilings.",
+    "Always include an invalidation level with every trade scenario.",
+    "Flag if price was recently delivered from a level — reduces probability of re-reaching it quickly.",
+    "Heatseeker is the compass, not the bible — price action and market structure must confirm the map.",
+    "NEVER set a target at a single ticker's King without checking cross-ticker magnitude.",
+    "After a node pays out, check if it washed off — don't re-trade dead levels.",
+    "If a node's value grows while price bounces away from it → Bearish Divergence → bounce is fake.",
+    "News doesn't invalidate the map — the map often predicted the move. But if news knifes a setup, accept the loss.",
+    "When Kings diverge across tickers, expect CONVERGENCE not a single King winning."
+  ],
+
+  "speculative_node_filter": {
+    "enabled": true,
+    "criteria": [
+      "Far-OTM nodes (>3% from spot) with small magnitude are likely speculative/decoy",
+      "Nodes that appeared recently without growing are suspect",
+      "Isolated nodes with no cluster support are lower conviction",
+      "Nodes at round numbers may attract speculative flow — verify with magnitude"
+    ]
+  },
+
+  "node_lifecycle_signals": {
+    "growing_toward": "Strengthening magnet — more dealer hedging building at this strike",
+    "growing_away": "BEARISH DIVERGENCE — node value grows while price bounces away. The bounce is fake.",
+    "shrinking_after_touch": "Node washing off — don't re-trade. Dealers unwinding hedges.",
+    "rapid_appearance": "New node appeared quickly — may be speculative. Wait for confirmation.",
+    "cluster_formation": "Multiple nodes forming near same strike — high-conviction level"
+  },
+
+  "divergence_signals": {
+    "gex_growing_price_retreating": {
+      "signal": "Bearish Divergence",
+      "meaning": "Dealers are building more hedges at the strike even as price moves away. Price will likely return.",
+      "action": "Do NOT trust the retreat. Expect price to revisit the node."
+    },
+    "gex_shrinking_price_approaching": {
+      "signal": "Washoff Warning",
+      "meaning": "Node is losing hedging interest as price approaches. It may not hold.",
+      "action": "Reduce conviction on trades targeting this node."
+    },
+    "vex_growing_opposite_gex": {
+      "signal": "Alignment Shift",
+      "meaning": "VEX is growing opposite to GEX at a strike. The effective pull is weakening.",
+      "action": "Apply VEX quality adjustment. Reduce target distance."
+    }
+  },
+
   "price_action": {
     "indicators": ["sma_9", "sma_20", "ema_9", "ema_21", "rsi_14", "vwap"],
     "signals": {
@@ -28,11 +389,25 @@
       "ema_crossover": true
     }
   },
+
   "gap_analysis": {
     "small_gap_threshold_points": 10,
     "gap_fill_monitoring_minutes": 15,
     "high_of_day_pattern_enabled": true
   },
+
+  "operational_rules": {
+    "entry": "Limit orders ONLY. Lowball $0.10-$0.20 below bid on buys.",
+    "candle_color": "Go long on RED candles, short on GREEN candles.",
+    "green_trade_rule": "Never let a green trade go red.",
+    "range_depletion": "If >50% of daily range consumed, R/R degrades for new entries.",
+    "timing": {
+      "avoid_last_15_min": true,
+      "best_window": "First 90 minutes after open (9:30-11:00 ET) for highest gamma flow"
+    }
+  },
+
+  "min_rr_ratio": 3.0,
   "market_data_url": "http://localhost:8110",
   "risk_management_url": "http://localhost:8112",
   "registry_url": "http://localhost:8099"
