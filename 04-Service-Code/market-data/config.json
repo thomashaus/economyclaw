@@ -1,23 +1,105 @@
 {
-  "version": "0.5",
+  "version": "1.0",
   "machine": "ec-prime",
   "port": 8110,
   "sector": "trading",
   "instruments": {
-    "ES": { "type": "future", "exchange": "CME", "tick_size": 0.25, "tick_value": 12.50, "multiplier": 50, "micro": "MES" },
-    "MES": { "type": "future", "exchange": "CME", "tick_size": 0.25, "tick_value": 1.25, "multiplier": 5, "micro": true },
-    "NQ": { "type": "future", "exchange": "CME", "tick_size": 0.25, "tick_value": 5.00, "multiplier": 20, "micro": "MNQ" },
-    "MNQ": { "type": "future", "exchange": "CME", "tick_size": 0.25, "tick_value": 0.50, "multiplier": 2, "micro": true }
+    "ES": {
+      "type": "future",
+      "exchange": "CME",
+      "name": "E-mini S&P 500",
+      "tick_size": 0.25,
+      "tick_value": 12.50,
+      "ticks_per_point": 4,
+      "point_value": 50,
+      "multiplier": 50,
+      "leverage": "1:50",
+      "micro": "MES",
+      "tracks": ["SPX", "SPY"]
+    },
+    "MES": {
+      "type": "future",
+      "exchange": "CME",
+      "name": "Micro E-mini S&P 500",
+      "tick_size": 0.25,
+      "tick_value": 1.25,
+      "ticks_per_point": 4,
+      "point_value": 5,
+      "multiplier": 5,
+      "leverage": "1:5",
+      "micro": true,
+      "tracks": ["SPX", "SPY"]
+    },
+    "NQ": {
+      "type": "future",
+      "exchange": "CME",
+      "name": "E-mini NASDAQ 100",
+      "tick_size": 0.25,
+      "tick_value": 5.00,
+      "ticks_per_point": 4,
+      "point_value": 20,
+      "multiplier": 20,
+      "leverage": "1:20",
+      "micro": "MNQ",
+      "tracks": ["NDX", "QQQ"],
+      "notes": "More volatile than ES. Larger wicks. Better for sniping liquidity sweeps."
+    },
+    "MNQ": {
+      "type": "future",
+      "exchange": "CME",
+      "name": "Micro E-mini NASDAQ 100",
+      "tick_size": 0.25,
+      "tick_value": 0.50,
+      "ticks_per_point": 4,
+      "point_value": 2,
+      "multiplier": 2,
+      "leverage": "1:2",
+      "micro": true,
+      "tracks": ["NDX", "QQQ"]
+    }
+  },
+  "sessions": {
+    "timezone": "America/New_York",
+    "asia": {
+      "label": "Asia Session",
+      "start": "19:00",
+      "end": "02:00",
+      "notes": "Bank of Japan decisions, overseas macro events. Overnight positioning occurs here."
+    },
+    "london": {
+      "label": "London Session",
+      "start": "02:00",
+      "end": "11:00",
+      "overlap_ny_start": "08:30",
+      "notes": "London highs/lows are key liquidity levels. Overlaps NY by ~2.5 hours."
+    },
+    "new_york": {
+      "label": "New York Session",
+      "start": "08:30",
+      "end": "16:00",
+      "notes": "Primary trading session. Most positioning already done by open from overnight."
+    },
+    "closed": {
+      "label": "Futures Closed",
+      "start": "17:00",
+      "end": "18:00",
+      "notes": "Daily settlement. No trading."
+    }
+  },
+  "session_levels": {
+    "enabled": true,
+    "track": ["asia_high", "asia_low", "london_high", "london_low", "overnight_high", "overnight_low"],
+    "significance": "Session highs/lows act as liquidity levels. Sweeps of these levels often trigger reversals (search and destroy / Timmy hunts)."
   },
   "market_hours": {
-    "futures_open": "17:00",
-    "futures_close": "16:00",
-    "rth_open": "08:30",
-    "rth_close": "15:00",
-    "timezone": "America/Chicago",
+    "futures_open": "18:00",
+    "futures_close": "17:00",
+    "rth_open": "09:30",
+    "rth_close": "16:00",
+    "timezone": "America/New_York",
     "pre_market_start": "08:15",
-    "heatseeker_window_start": "08:15",
-    "heatseeker_window_end": "15:15"
+    "heatseeker_window_start": "09:15",
+    "heatseeker_window_end": "16:15"
   },
   "data_sources": {
     "primary": "topstepx",

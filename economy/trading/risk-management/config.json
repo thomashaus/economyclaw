@@ -1,48 +1,157 @@
 {
-  "version": "0.5",
+  "version": "1.0",
   "machine": "ec-prime",
   "port": 8112,
   "sector": "trading",
   "instruments": {
-    "ES": { "tick_value": 12.50, "multiplier": 50, "micro": "MES" },
-    "MES": { "tick_value": 1.25, "multiplier": 5, "micro": true },
-    "NQ": { "tick_value": 5.00, "multiplier": 20, "micro": "MNQ" },
-    "MNQ": { "tick_value": 0.50, "multiplier": 2, "micro": true }
+    "ES": { "tick_value": 12.50, "multiplier": 50, "point_value": 50, "ticks_per_point": 4, "micro": "MES" },
+    "MES": { "tick_value": 1.25, "multiplier": 5, "point_value": 5, "ticks_per_point": 4, "micro": true },
+    "NQ": { "tick_value": 5.00, "multiplier": 20, "point_value": 20, "ticks_per_point": 4, "micro": "MNQ" },
+    "MNQ": { "tick_value": 0.50, "multiplier": 2, "point_value": 2, "ticks_per_point": 4, "micro": true }
   },
   "topstep_stages": {
     "combine": {
       "label": "Trading Combine (Evaluation)",
+      "account_balance": 50000,
       "max_contracts": { "ES": 2, "MES": 20, "NQ": 2, "MNQ": 20 },
       "daily_loss_limit": 1500,
       "max_drawdown": 3000,
       "profit_target": 6000,
       "trailing_drawdown": true,
-      "trailing_drawdown_type": "end_of_day"
+      "trailing_drawdown_type": "end_of_day",
+      "trailing_drawdown_mechanics": {
+        "description": "Drawdown floor trails your high-water mark upward but never moves down. Locks once it reaches the initial account balance.",
+        "initial_floor": 47000,
+        "lock_threshold": 50000,
+        "trail_basis": "end_of_day_balance",
+        "example": "Start at $50K, floor is $47K. If you make $2K (balance $52K), floor trails to $49K. At $53K balance, floor is $50K — now locked. Floor never drops below $50K again."
+      }
     },
     "xfa": {
       "label": "Express Funded Account",
+      "account_balance": 50000,
       "max_contracts": { "ES": 2, "MES": 20, "NQ": 2, "MNQ": 20 },
       "daily_loss_limit": 1500,
       "max_drawdown": 2000,
       "profit_target": null,
       "trailing_drawdown": true,
-      "trailing_drawdown_type": "real_time"
+      "trailing_drawdown_type": "real_time",
+      "trailing_drawdown_mechanics": {
+        "description": "Same trailing logic but tracks real-time (intraday), not end-of-day. Tighter — open P&L counts against you.",
+        "initial_floor": 48000,
+        "lock_threshold": 50000,
+        "trail_basis": "real_time_equity",
+        "warning": "Open positions count against drawdown in real-time. A $1500 unrealized loss on a $50K account with $2K max drawdown puts you $500 from violation."
+      }
     },
     "live": {
       "label": "Live Funded Account",
+      "account_balance": 50000,
       "max_contracts": { "ES": 2, "MES": 20, "NQ": 2, "MNQ": 20 },
       "daily_loss_limit": 1500,
       "max_drawdown": 2000,
       "profit_target": null,
-      "trailing_drawdown": false
+      "trailing_drawdown": false,
+      "trailing_drawdown_mechanics": {
+        "description": "Fixed drawdown. Floor is always initial_balance minus max_drawdown. Does not trail.",
+        "initial_floor": 48000,
+        "lock_threshold": null,
+        "trail_basis": "none"
+      }
     }
   },
   "active_stage": "combine",
+  "consistency_rule": {
+    "enabled": true,
+    "max_single_day_profit_pct": 0.30,
+    "basis": "profit_target",
+    "description": "No single trading day can account for more than 30% of the profit target. For a $6K target, max single-day profit is $1,800.",
+    "combine_max_daily_profit": 1800,
+    "enforcement": "warning_then_block",
+    "action_at_threshold": "Warn at 25% ($1,500). Block new entries at 30% ($1,800). Allow existing positions to close."
+  },
+  "news_blackout": {
+    "enabled": true,
+    "buffer_minutes_before": 5,
+    "buffer_minutes_after": 5,
+    "action": "block_new_entries",
+    "allow_exit": true,
+    "high_impact_events": [
+      { "name": "CPI", "label": "Consumer Price Index", "typical_time": "08:30" },
+      { "name": "PPI", "label": "Producer Price Index", "typical_time": "08:30" },
+      { "name": "NFP", "label": "Non-Farm Payrolls", "typical_time": "08:30" },
+      { "name": "FOMC", "label": "FOMC Rate Decision", "typical_time": "14:00" },
+      { "name": "FOMC_MINUTES", "label": "FOMC Minutes", "typical_time": "14:00" },
+      { "name": "PCE", "label": "Core PCE Price Index", "typical_time": "08:30" },
+      { "name": "GDP", "label": "GDP Report", "typical_time": "08:30" },
+      { "name": "JOBLESS_CLAIMS", "label": "Initial Jobless Claims", "typical_time": "08:30" },
+      { "name": "RETAIL_SALES", "label": "Retail Sales", "typical_time": "08:30" },
+      { "name": "ISM_MFG", "label": "ISM Manufacturing PMI", "typical_time": "10:00" },
+      { "name": "ISM_SVC", "label": "ISM Services PMI", "typical_time": "10:00" }
+    ],
+    "calendar_source": "manual",
+    "notes": "Block entries 5 min before and after high-impact news. Exits always allowed. Calendar events loaded manually until we wire an economic calendar API."
+  },
+  "no_hedging": {
+    "enabled": true,
+    "description": "Cannot hold simultaneous long and short positions in the same instrument or correlated instruments (ES/MES, NQ/MNQ). TopstepX explicitly prohibits hedging.",
+    "correlated_pairs": [
+      ["ES", "MES"],
+      ["NQ", "MNQ"]
+    ],
+    "enforcement": "block_conflicting_entry"
+  },
+  "sizing_tiers": {
+    "enabled": true,
+    "account_balance_source": "active_stage",
+    "tiers": {
+      "A_plus": {
+        "label": "A+ Setup",
+        "max_risk_pct": 0.05,
+        "description": "5% of account balance per trade. Requires: hourly double bottom/top + 3-min double bottom/top + Heatseeker confluence + VIX at key level.",
+        "min_heatseeker_grade": "A",
+        "min_rr_ratio": 3.0,
+        "requires_checklist": true,
+        "checklist": [
+          "Hourly chart shows double bottom/top or key S&R level",
+          "3-minute chart confirms with double bottom/top pattern",
+          "Heatseeker signal has A or A+ grade with confluence",
+          "VIX at key level supporting directional bias",
+          "Trinity alignment across SPX/SPY/QQQ"
+        ]
+      },
+      "B": {
+        "label": "B Setup",
+        "max_risk_pct": 0.025,
+        "description": "2.5% of account balance per trade. Good signal, decent confluence, but missing one or more A+ checklist items.",
+        "min_heatseeker_grade": "B",
+        "min_rr_ratio": 3.0,
+        "requires_checklist": false
+      },
+      "C": {
+        "label": "C Setup (Lotto)",
+        "max_risk_pct": 0.01,
+        "description": "1% of account balance. Speculative / low-conviction. Small size, wide stop, let it play out.",
+        "min_heatseeker_grade": "C",
+        "min_rr_ratio": 2.0,
+        "requires_checklist": false
+      }
+    },
+    "max_daily_exposure_pct": 0.30,
+    "max_daily_exposure_description": "Total risk across all open positions cannot exceed 30% of account balance in a single day.",
+    "dollar_values_at_50k": {
+      "A_plus_max_risk": 2500,
+      "B_max_risk": 1250,
+      "C_max_risk": 500,
+      "max_daily_exposure": 15000
+    }
+  },
   "off_hours_rules": {
     "max_contracts": { "MES": 1, "MNQ": 1 },
     "allowed_instruments": ["MES", "MNQ"],
     "max_concurrent_positions": 1,
-    "max_loss_per_trade_dollars": 50
+    "max_loss_per_trade_dollars": 50,
+    "notes": "Off-hours = outside RTH (9:30-16:00 ET). Micros only, 1 contract max, $50 max loss per trade."
   },
   "market_hours_rules": {
     "allowed_instruments": ["ES", "MES", "NQ", "MNQ"],
@@ -54,11 +163,29 @@
   },
   "global_rules": {
     "max_daily_loss_pct_of_limit": 0.75,
+    "max_daily_loss_description": "Stop trading when daily losses reach 75% of the daily loss limit ($1,125 on $1,500 limit). Preserves buffer.",
     "cooldown_after_consecutive_losses": 3,
     "cooldown_minutes": 30,
+    "cooldown_description": "After 3 consecutive losses, mandatory 30-minute cooldown. Prevents tilt/revenge trading.",
     "max_trades_per_day": 6,
     "no_trade_last_minutes_before_close": 15,
-    "required_account_balance_buffer_pct": 0.20
+    "no_trade_close_description": "No new entries in final 15 minutes before RTH close (3:45 PM ET). Avoids settlement risk.",
+    "required_account_balance_buffer_pct": 0.20,
+    "balance_buffer_description": "Must maintain 20% buffer above max drawdown floor. If floor is $47K, stop trading at $47K + ($50K * 0.20) = $57K... actually this means stop when within 20% of the floor."
+  },
+  "scaling_rules": {
+    "enabled": true,
+    "scale_in": {
+      "allowed": true,
+      "max_adds": 2,
+      "require_profit_on_initial": true,
+      "description": "Can add to a winning position up to 2 times. Initial position must be in profit before adding. Each add uses the next smaller sizing tier."
+    },
+    "scale_out": {
+      "allowed": true,
+      "partial_targets": [0.5, 0.75, 1.0],
+      "description": "Take partial profits at 50%, 75%, and 100% of target. Move stop to breakeven after first partial."
+    }
   },
   "heatseeker_url": "http://localhost:8111",
   "market_data_url": "http://localhost:8110",

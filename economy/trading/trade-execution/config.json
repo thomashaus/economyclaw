@@ -1,5 +1,5 @@
 {
-  "version": "0.5",
+  "version": "1.0",
   "machine": "ec-prime",
   "port": 8114,
   "sector": "trading",
@@ -24,15 +24,92 @@
         "api_key": null,
         "username": null,
         "account_id": null,
-        "configured": false
+        "configured": false,
+        "multi_account": {
+          "enabled": false,
+          "accounts": [],
+          "notes": "One trade decision fans out to all configured accounts at the API layer. Our pipeline stays single-signal."
+        }
       }
     }
   },
   "instruments": {
-    "ES": { "topstep_symbol": "ES", "tick_size": 0.25, "multiplier": 50 },
-    "MES": { "topstep_symbol": "MES", "tick_size": 0.25, "multiplier": 5 },
-    "NQ": { "topstep_symbol": "NQ", "tick_size": 0.25, "multiplier": 20 },
-    "MNQ": { "topstep_symbol": "MNQ", "tick_size": 0.25, "multiplier": 2 }
+    "ES": {
+      "topstep_symbol": "ES",
+      "type": "future",
+      "exchange": "CME",
+      "name": "E-mini S&P 500",
+      "tick_size": 0.25,
+      "tick_value": 12.50,
+      "ticks_per_point": 4,
+      "point_value": 50,
+      "multiplier": 50,
+      "leverage": "1:50",
+      "micro": "MES",
+      "tracks": ["SPX", "SPY"]
+    },
+    "MES": {
+      "topstep_symbol": "MES",
+      "type": "future",
+      "exchange": "CME",
+      "name": "Micro E-mini S&P 500",
+      "tick_size": 0.25,
+      "tick_value": 1.25,
+      "ticks_per_point": 4,
+      "point_value": 5,
+      "multiplier": 5,
+      "leverage": "1:5",
+      "micro": true,
+      "tracks": ["SPX", "SPY"]
+    },
+    "NQ": {
+      "topstep_symbol": "NQ",
+      "type": "future",
+      "exchange": "CME",
+      "name": "E-mini NASDAQ 100",
+      "tick_size": 0.25,
+      "tick_value": 5.00,
+      "ticks_per_point": 4,
+      "point_value": 20,
+      "multiplier": 20,
+      "leverage": "1:20",
+      "micro": "MNQ",
+      "tracks": ["NDX", "QQQ"]
+    },
+    "MNQ": {
+      "topstep_symbol": "MNQ",
+      "type": "future",
+      "exchange": "CME",
+      "name": "Micro E-mini NASDAQ 100",
+      "tick_size": 0.25,
+      "tick_value": 0.50,
+      "ticks_per_point": 4,
+      "point_value": 2,
+      "multiplier": 2,
+      "leverage": "1:2",
+      "micro": true,
+      "tracks": ["NDX", "QQQ"]
+    }
+  },
+  "order_types": {
+    "supported": ["limit", "market", "stop_buy", "stop_sell", "stop_limit"],
+    "default": "limit",
+    "stop_buy": {
+      "description": "Buy stop order placed ABOVE current price. Triggers when price rises to stop level.",
+      "use_case": "Entry on reclaim after liquidity sweep. Price sweeps below support, you place stop_buy above sweep level. Filled on reclaim, never filled if price keeps dumping.",
+      "requires_trigger_price": true
+    },
+    "stop_sell": {
+      "description": "Sell stop order placed BELOW current price. Triggers when price drops to stop level.",
+      "use_case": "Entry on rejection after liquidity grab above resistance. Price sweeps above resistance, you place stop_sell below sweep level. Filled on rejection, never filled if price keeps ripping.",
+      "requires_trigger_price": true
+    },
+    "stop_limit": {
+      "description": "Stop order with limit price protection. Triggers at stop price, fills at limit or better.",
+      "use_case": "Same as stop_buy/stop_sell but with slippage protection. Wider spread in volatile conditions may cause non-fill.",
+      "requires_trigger_price": true,
+      "requires_limit_price": true
+    }
   },
   "order_defaults": {
     "order_type": "limit",
@@ -40,6 +117,26 @@
     "bracket_enabled": true,
     "stop_loss_required": true,
     "take_profit_required": true
+  },
+  "bracket_templates": {
+    "conservative": {
+      "stop_loss_ticks": 8,
+      "take_profit_ticks": 24,
+      "rr_ratio": 3.0,
+      "notes": "Standard 3:1 R:R. 2-point stop on ES, 6-point target."
+    },
+    "aggressive": {
+      "stop_loss_ticks": 4,
+      "take_profit_ticks": 16,
+      "rr_ratio": 4.0,
+      "notes": "Tight stop, high R:R. Only for A+ setups with strong confluence."
+    },
+    "scalp": {
+      "stop_loss_ticks": 4,
+      "take_profit_ticks": 8,
+      "rr_ratio": 2.0,
+      "notes": "Quick scalp with 2:1 R:R. Off-hours or low-conviction plays."
+    }
   },
   "risk_management_url": "http://localhost:8112",
   "market_data_url": "http://localhost:8110",
