@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { startWorker, addWorkerEndpoints } = require('../../services/worker');
 const app = express();
 app.use(express.json());
 
@@ -478,6 +479,53 @@ app.get('/audit', (req, res) => {
   });
 });
 
+// ─── Worker Integration ──────────────────────────────────────────────────
+
+addWorkerEndpoints(app, SERVICE_NAME);
+
+async function handleWork(workItem, tools) {
+  const { capability, payload, description } = workItem;
+  console.log(`[${SERVICE_NAME}] Handling work: ${capability} — ${description}`);
+
+  const response = await tools.callLLM({
+    system: `You are the Trust Scoring service in the EconomyClaw Supply Economy. Your domain is evidence-based trust assessment, penalty management, peer assessment aggregation, quarantine decisions, and economy-wide trust reporting.
+
+You handle:
+- Trust score computation: weighted blend of penalty history and peer assessments
+- Penalty application: only from external evidence, never self-reported (Decision #59)
+- Peer assessment: any service can rate another, blended into effective score
+- Quarantine management: services below threshold are quarantined, restoration requires evidence
+- Health polling: monitoring all services and penalizing consecutive failures
+- Governor reporting: economy-wide trust summaries for State of the State
+- Per Promise Theory P15, trust is earned by keeping promises. You observe and measure — you don't punish, you record.
+
+Current scoring: initial 0.85, quarantine threshold 0.3, peer assessment weight 0.2.
+
+Be specific and actionable. Produce concrete deliverables.`,
+    prompt: `Work package assigned to you:
+- Capability: ${capability}
+- Description: ${description || 'No description'}
+- Payload: ${JSON.stringify(payload || {}, null, 2)}
+
+Analyze this work package. What concrete steps should Trust Scoring take? What deliverables will you produce? What do you need from other services?`,
+    maxTokens: 1024
+  });
+
+  state.requests_handled++;
+
+  if (payload?.work_package_id) {
+    await tools.updateWorkPackageProgress(payload.work_package_id, {
+      status: 'in_progress', progress_pct: 25, assigned_services: [SERVICE_NAME],
+      notes: [`Initial assessment complete. Plan: ${response.content.substring(0, 200)}...`]
+    });
+  }
+
+  return {
+    assessment: response.content, model_used: response.model,
+    tokens_used: response.tokens, cost: response.cost, produced_by: SERVICE_NAME
+  };
+}
+
 // ─── Startup ───────────────────────────────────────────────────────────────
 
 // Self-register with Service Registry
@@ -507,8 +555,9 @@ process.on('SIGINT', () => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[trust-scoring] Running on port ${PORT}`);
+  console.log(`[trust-scoring] Running on port ${PORT} | Sector: regulatory`);
   selfRegister();
   // Run initial health poll after 5 seconds
   setTimeout(pollServiceHealth, 5000);
+  startWorker({ serviceName: SERVICE_NAME, port: PORT, handler: handleWork });
 });

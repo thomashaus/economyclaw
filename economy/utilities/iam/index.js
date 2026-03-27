@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { startWorker, addWorkerEndpoints } = require('../../services/worker');
 const app = express();
 app.use(express.json());
 
@@ -274,6 +275,51 @@ app.get('/access-log', (req, res) => {
   });
 });
 
+// ─── Worker Integration ──────────────────────────────────────────────────
+
+addWorkerEndpoints(app, SERVICE_NAME);
+
+async function handleWork(workItem, tools) {
+  const { capability, payload, description } = workItem;
+  console.log(`[${SERVICE_NAME}] Handling work: ${capability} — ${description}`);
+
+  const response = await tools.callLLM({
+    system: `You are the Identity & Access Management (IAM) service in the EconomyClaw Supply Economy. Your domain is service authentication, cross-service authorization, token issuance, and access policy enforcement.
+
+You handle:
+- Service identity verification via token issuance and validation
+- Cross-service authorization decisions (who can call what endpoint)
+- Access control matrix maintenance and policy updates
+- Audit trail for all access decisions
+- Per Promise Theory, you promise to enforce the access boundaries — but each service promises to present valid credentials. Trust is verified, not assumed (zero-trust, fail-closed).
+
+Current capabilities: token issuance, token validation, policy-based authorization, access logging.
+
+Be specific and actionable. Produce concrete deliverables.`,
+    prompt: `Work package assigned to you:
+- Capability: ${capability}
+- Description: ${description || 'No description'}
+- Payload: ${JSON.stringify(payload || {}, null, 2)}
+
+Analyze this work package. What concrete steps should IAM take? What deliverables will you produce? What do you need from other services?`,
+    maxTokens: 1024
+  });
+
+  state.requests_handled++;
+
+  if (payload?.work_package_id) {
+    await tools.updateWorkPackageProgress(payload.work_package_id, {
+      status: 'in_progress', progress_pct: 25, assigned_services: [SERVICE_NAME],
+      notes: [`Initial assessment complete. Plan: ${response.content.substring(0, 200)}...`]
+    });
+  }
+
+  return {
+    assessment: response.content, model_used: response.model,
+    tokens_used: response.tokens, cost: response.cost, produced_by: SERVICE_NAME
+  };
+}
+
 // ─── Startup ───────────────────────────────────────────────────────────────
 
 async function selfRegister() {
@@ -301,6 +347,7 @@ process.on('SIGTERM', () => { persist(); process.exit(0); });
 process.on('SIGINT', () => { persist(); process.exit(0); });
 
 app.listen(PORT, () => {
-  console.log(`[iam] Running on port ${PORT}`);
+  console.log(`[iam] Running on port ${PORT} | Sector: utilities`);
   selfRegister();
+  startWorker({ serviceName: SERVICE_NAME, port: PORT, handler: handleWork });
 });
