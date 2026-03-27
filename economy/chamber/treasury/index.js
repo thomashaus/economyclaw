@@ -85,6 +85,47 @@ Analyze this work package. What concrete steps should Treasury take? What tracki
   };
 }
 
+// ─── Trading P&L Ledger ──────────────────────────────────────────────────────
+// Treasury tracks trading revenue/loss as a sector-level income line.
+// This lets the supply economy understand how the trading sector is performing
+// and allocate resources (e.g., reduce LLM spend during drawdown periods).
+
+const tradingLedger = [];  // append-only event log
+let tradingBalance = {
+  total_pnl: 0,
+  open_positions: 0,
+  realized_today: 0,
+  last_reset: new Date().toISOString()
+};
+
+app.post('/trading/event', (req, res) => {
+  const { event, order_id, symbol, direction, pnl, fill_price, exit_price, timestamp } = req.body;
+
+  tradingLedger.push(req.body);
+  if (tradingLedger.length > 1000) tradingLedger.splice(0, tradingLedger.length - 1000);
+
+  if (event === 'trade_opened') {
+    tradingBalance.open_positions++;
+  } else if (event === 'trade_closed') {
+    const p = parseFloat(pnl) || 0;
+    tradingBalance.total_pnl = parseFloat((tradingBalance.total_pnl + p).toFixed(2));
+    tradingBalance.realized_today = parseFloat((tradingBalance.realized_today + p).toFixed(2));
+    tradingBalance.open_positions = Math.max(0, tradingBalance.open_positions - 1);
+  }
+
+  state.requests_handled++;
+  console.log('[treasury] trading/' + event + ' ' + (symbol || '') + (pnl !== undefined ? ' P&L: $' + pnl : ''));
+  res.json({ received: true, event });
+});
+
+app.get('/trading/pnl', (req, res) => {
+  res.json({
+    balance: tradingBalance,
+    recent_ledger: tradingLedger.slice(-20),
+    total_entries: tradingLedger.length
+  });
+});
+
 // ── Self-register ──
 async function selfRegister() {
   try {

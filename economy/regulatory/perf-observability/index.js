@@ -85,6 +85,59 @@ Analyze this work package. What monitoring, dashboards, or alerts should be impl
   };
 }
 
+// ─── Trading Telemetry ───────────────────────────────────────────────────────
+// Receives trade events from trade-execution. Tracks live trading performance
+// metrics so the supply economy has observability into the trading sector.
+
+const tradingEvents = [];  // rolling log — last 500 events
+let tradingStats = {
+  total_trades_opened: 0,
+  total_trades_closed: 0,
+  total_pnl: 0,
+  wins: 0,
+  losses: 0,
+  gross_wins: 0,
+  gross_losses: 0,
+  last_updated: null
+};
+
+app.post('/trading/event', (req, res) => {
+  const { event, order_id, symbol, direction, pnl, close_reason, timestamp } = req.body;
+
+  tradingEvents.push(req.body);
+  if (tradingEvents.length > 500) tradingEvents.splice(0, tradingEvents.length - 500);
+
+  if (event === 'trade_opened') {
+    tradingStats.total_trades_opened++;
+  } else if (event === 'trade_closed') {
+    tradingStats.total_trades_closed++;
+    const p = parseFloat(pnl) || 0;
+    tradingStats.total_pnl = parseFloat((tradingStats.total_pnl + p).toFixed(2));
+    if (p > 0) { tradingStats.wins++; tradingStats.gross_wins += p; }
+    else        { tradingStats.losses++; tradingStats.gross_losses += Math.abs(p); }
+    tradingStats.last_updated = timestamp || new Date().toISOString();
+  }
+
+  state.requests_handled++;
+  console.log('[perf-observability] trading/' + event + ' ' + (symbol || '') + ' ' +
+    (direction || '') + (pnl !== undefined ? ' P&L: $' + pnl : ''));
+  res.json({ received: true, event });
+});
+
+app.get('/trading/stats', (req, res) => {
+  const winRate = tradingStats.wins + tradingStats.losses > 0
+    ? parseFloat((tradingStats.wins / (tradingStats.wins + tradingStats.losses) * 100).toFixed(1))
+    : null;
+  const profitFactor = tradingStats.gross_losses > 0
+    ? parseFloat((tradingStats.gross_wins / tradingStats.gross_losses).toFixed(2))
+    : null;
+
+  res.json({
+    stats: { ...tradingStats, win_rate_pct: winRate, profit_factor: profitFactor },
+    recent_events: tradingEvents.slice(-20)
+  });
+});
+
 // ── Self-register ──
 async function selfRegister() {
   try {

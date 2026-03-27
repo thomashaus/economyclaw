@@ -36,6 +36,33 @@ function logExecution(type, details) {
   return entry;
 }
 
+// ─── Economy Telemetry ───────────────────────────────────────────────────────
+// Fire-and-forget: broadcast trade events to supply economy services.
+// Treasury receives P&L data for cost/revenue tracking.
+// Perf-Observability receives trade metrics for performance dashboards.
+
+async function notifyEconomy(event, data) {
+  const payload = { event, source: SERVICE_NAME, timestamp: now(), ...data };
+
+  if (config.treasury_url) {
+    fetch(config.treasury_url + '/trading/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(3000)
+    }).catch(err => console.log('[trade-execution] Treasury notify failed: ' + err.message));
+  }
+
+  if (config.perf_observability_url) {
+    fetch(config.perf_observability_url + '/trading/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(3000)
+    }).catch(err => console.log('[trade-execution] PerfObs notify failed: ' + err.message));
+  }
+}
+
 async function notifyRiskManagement(action, data) {
   try {
     const endpoint = action === 'open'
@@ -689,6 +716,19 @@ async function executeTrade(proposal) {
       order.risk_position_id = riskPosition.id;
     }
 
+    // Notify supply economy: trade opened
+    notifyEconomy('trade_opened', {
+      order_id: order.id,
+      symbol: order.symbol,
+      direction: order.direction,
+      contracts: order.contracts,
+      fill_price: order.fill_price,
+      stop_price: order.stop_price,
+      target_price: order.target_price,
+      adapter: order.adapter,
+      signal_id: order.signal_id
+    });
+
     return {
       order_id: order.id,
       status: 'filled',
@@ -783,6 +823,19 @@ async function monitorBrackets() {
         reason: triggered
       });
 
+      // Notify supply economy: trade closed with P&L
+      notifyEconomy('trade_closed', {
+        order_id: order.id,
+        symbol: order.symbol,
+        direction: order.direction,
+        contracts: order.contracts,
+        entry_price: order.fill_price,
+        exit_price: exitPrice,
+        pnl: order.pnl,
+        close_reason: triggered,
+        adapter: order.adapter
+      });
+
       console.log('[trade-execution] ' + triggered.toUpperCase() + ': ' + order.symbol + ' ' + order.direction +
         ' @ ' + exitPrice + ' P&L: $' + order.pnl);
     }
@@ -833,7 +886,8 @@ app.get('/info', (req, res) => {
       'POST /active-firm — switch active firm within ProjectX { firm }',
       'POST /adapter — switch execution adapter (simulated/projectx)',
       'GET /orders/stops — pending stop orders waiting for trigger',
-      'POST /orders/stops/:id/cancel — cancel a pending stop order'
+      'POST /orders/stops/:id/cancel — cancel a pending stop order',
+      'POST /backtest — replay trade records through performance analysis { trades, firm? }'
     ]
   });
 });
@@ -946,6 +1000,19 @@ app.post('/orders/:id/close', async (req, res) => {
     reason: order.close_reason
   });
 
+  // Notify supply economy: trade closed with P&L
+  notifyEconomy('trade_closed', {
+    order_id: order.id,
+    symbol: order.symbol,
+    direction: order.direction,
+    contracts: order.contracts,
+    entry_price: order.fill_price,
+    exit_price: order.exit_price,
+    pnl: order.pnl,
+    close_reason: order.close_reason,
+    adapter: order.adapter
+  });
+
   res.json({
     order_id: order.id,
     status: 'closed',
@@ -991,6 +1058,159 @@ app.post('/orders/stops/:id/cancel', (req, res) => {
 app.get('/execution-log', (req, res) => {
   const limit = parseInt(req.query.limit) || 50;
   res.json({ log: executionLog.slice(-limit), total: executionLog.length });
+});
+
+// ─── Backtesting ─────────────────────────────────────────────────────────────
+// POST /backtest — replay completed trade records through performance analysis.
+// Accepts historical trades; computes win rate, P&L, profit factor, drawdown,
+// R:R, and consistency rule compliance against prop firm limits.
+//
+// Body: { firm?: "topstepx", trades: [ { symbol, direction, contracts,
+//   entry_price, exit_price, stop_price, target_price, close_reason? } ] }
+
+app.post('/backtest', (req, res) => {
+  const { trades, firm } = req.body;
+  if (!Array.isArray(trades) || trades.length === 0) {
+    return res.status(400).json({
+      error: 'Required: trades array',
+      example: {
+        firm: 'topstepx',
+        trades: [{ symbol: 'ES', direction: 'long', contracts: 1,
+          entry_price: 5850, exit_price: 5856, stop_price: 5848,
+          target_price: 5856, close_reason: 'take_profit' }]
+      }
+    });
+  }
+
+  // Load firm rules (optional — for compliance check)
+  const pxConfig = config.execution_adapter.adapters.projectx;
+  const firmKey = firm || pxConfig.active_firm || 'topstepx';
+  const firmRules = pxConfig.firms[firmKey]?.firm_rules || null;
+
+  // ── Per-trade analysis ─────────────────────────────────────────────────────
+  const results = [];
+  for (let i = 0; i < trades.length; i++) {
+    const t = trades[i];
+    const inst = config.instruments[(t.symbol || '').toUpperCase()];
+    if (!inst) { results.push({ index: i, error: 'Unknown symbol: ' + t.symbol }); continue; }
+
+    const qty = t.contracts || 1;
+    const mult = inst.multiplier * qty;
+    const pnl = t.direction === 'long'
+      ? (t.exit_price - t.entry_price) * mult
+      : (t.entry_price - t.exit_price) * mult;
+    const riskPts  = Math.abs(t.entry_price - (t.stop_price || t.entry_price));
+    const rewardPts = Math.abs((t.target_price || t.exit_price) - t.entry_price);
+    const plannedRR = riskPts > 0 ? parseFloat((rewardPts / riskPts).toFixed(2)) : null;
+    const actualMove = Math.abs(t.exit_price - t.entry_price);
+    const actualR    = riskPts > 0
+      ? parseFloat((actualMove / riskPts * (pnl >= 0 ? 1 : -1)).toFixed(2))
+      : null;
+
+    results.push({
+      index: i,
+      symbol: (t.symbol || '').toUpperCase(),
+      direction: t.direction,
+      contracts: qty,
+      entry_price: t.entry_price,
+      exit_price: t.exit_price,
+      pnl: parseFloat(pnl.toFixed(2)),
+      win: pnl > 0,
+      rr_planned: plannedRR,
+      actual_r: actualR,
+      close_reason: t.close_reason || 'unknown'
+    });
+  }
+
+  const valid = results.filter(r => !r.error);
+  const wins   = valid.filter(r => r.win);
+  const losses = valid.filter(r => !r.win);
+  const grossWins   = wins.reduce((s, r) => s + r.pnl, 0);
+  const grossLosses = Math.abs(losses.reduce((s, r) => s + r.pnl, 0));
+  const totalPnl    = valid.reduce((s, r) => s + r.pnl, 0);
+  const profitFactor = grossLosses > 0 ? parseFloat((grossWins / grossLosses).toFixed(2)) : null;
+  const avgPlannedRR = valid.filter(r => r.rr_planned).reduce((s, r) => s + r.rr_planned, 0) /
+                        (valid.filter(r => r.rr_planned).length || 1);
+
+  // Max drawdown (running P&L peak-to-trough)
+  let peak = 0, runningPnl = 0, maxDrawdown = 0;
+  for (const r of valid) {
+    runningPnl += r.pnl;
+    if (runningPnl > peak) peak = runningPnl;
+    const dd = peak - runningPnl;
+    if (dd > maxDrawdown) maxDrawdown = dd;
+  }
+
+  // Max consecutive losses
+  let maxConsec = 0, consec = 0;
+  for (const r of valid) {
+    if (!r.win) { consec++; if (consec > maxConsec) maxConsec = consec; }
+    else consec = 0;
+  }
+
+  // ── Compliance checks ──────────────────────────────────────────────────────
+  const compliance = {};
+
+  if (firmRules) {
+    // Daily loss limit (simplified: worst single-trade loss vs limit)
+    const worstSingleLoss = losses.length > 0
+      ? Math.min(...losses.map(r => r.pnl))
+      : 0;
+    if (firmRules.hard_stop_daily_loss) {
+      compliance.daily_loss = Math.abs(worstSingleLoss) >= firmRules.hard_stop_daily_loss
+        ? `WARN: Worst loss $${Math.abs(worstSingleLoss).toFixed(0)} approaches DLL hard stop $${firmRules.hard_stop_daily_loss}`
+        : `OK (worst single: $${Math.abs(worstSingleLoss).toFixed(0)} vs DLL $${firmRules.hard_stop_daily_loss})`;
+    }
+
+    // Drawdown check
+    if (firmRules.hard_stop_drawdown) {
+      compliance.drawdown = maxDrawdown >= firmRules.hard_stop_drawdown
+        ? `BREACH: Max drawdown $${maxDrawdown.toFixed(0)} exceeds hard stop $${firmRules.hard_stop_drawdown}`
+        : `OK (max DD: $${maxDrawdown.toFixed(0)} vs limit $${firmRules.hard_stop_drawdown})`;
+    }
+
+    // Consistency rule: no single day > N% of total profit
+    if (firmRules.consistency_rule_pct && grossWins > 0) {
+      const threshold = grossWins * firmRules.consistency_rule_pct;
+      const violations = wins.filter(r => r.pnl > threshold);
+      compliance.consistency = violations.length > 0
+        ? `WARN: ${violations.length} trade(s) exceeded ${(firmRules.consistency_rule_pct * 100).toFixed(0)}% of gross wins ($${threshold.toFixed(0)} threshold). Indices: ${violations.map(r => r.index).join(', ')}`
+        : `OK (threshold: $${threshold.toFixed(0)} per trade)`;
+    }
+
+    // Scalping check
+    if (firmRules.scalping_allowed === false) {
+      compliance.scalping = 'NOTE: Scalping disabled on this firm. Verify min hold time before live use.';
+    }
+
+    compliance.firm = firmKey;
+    compliance.firm_label = pxConfig.firms[firmKey]?.label || firmKey;
+  } else {
+    compliance.note = 'No firm specified — skipping compliance check. Pass ?firm=topstepx to enable.';
+  }
+
+  res.json({
+    summary: {
+      total_trades: valid.length,
+      wins: wins.length,
+      losses: losses.length,
+      win_rate: valid.length > 0
+        ? parseFloat((wins.length / valid.length * 100).toFixed(1)) + '%'
+        : 'N/A',
+      total_pnl: parseFloat(totalPnl.toFixed(2)),
+      gross_wins: parseFloat(grossWins.toFixed(2)),
+      gross_losses: parseFloat(grossLosses.toFixed(2)),
+      profit_factor: profitFactor,
+      avg_winner: wins.length > 0 ? parseFloat((grossWins / wins.length).toFixed(2)) : 0,
+      avg_loser: losses.length > 0 ? parseFloat((-grossLosses / losses.length).toFixed(2)) : 0,
+      avg_planned_rr: parseFloat(avgPlannedRR.toFixed(2)),
+      max_drawdown: parseFloat(maxDrawdown.toFixed(2)),
+      max_consecutive_losses: maxConsec
+    },
+    compliance,
+    trades: results,
+    errors: results.filter(r => r.error)
+  });
 });
 
 // Configure ProjectX (for a specific firm)

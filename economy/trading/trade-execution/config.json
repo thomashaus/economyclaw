@@ -274,5 +274,7 @@
   "risk_management_url": "http://localhost:8112",
   "market_data_url": "http://localhost:8110",
   "trade_approval_url": "http://localhost:8113",
-  "registry_url": "http://localhost:8099"
+  "registry_url": "http://localhost:8099",
+  "treasury_url": "http://localhost:8002",
+  "perf_observability_url": "http://localhost:8032"
 }
