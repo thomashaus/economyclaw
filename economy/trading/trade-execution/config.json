@@ -244,7 +244,8 @@
     }
   },
   "order_defaults": {
-    "order_type": "limit",
+    "order_type": "stop_buy",
+    "order_type_notes": "Default is stop_buy (sweep-and-reclaim methodology). Callers must explicitly pass order_type='limit' when fading directly into a GEX wall. 'market' is discouraged — slippage kills R:R on prop accounts.",
     "time_in_force": "day",
     "bracket_enabled": true,
     "stop_loss_required": true,

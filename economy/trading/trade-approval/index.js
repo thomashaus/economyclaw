@@ -478,6 +478,31 @@ app.get('/info', (req, res) => {
 
 // Submit trade for approval
 app.post('/submit', async (req, res) => {
+  // order_type is required — prevents defaulting to wrong entry type
+  // stop_buy  = reclaim entry (long after sweep below support) ← Heatseeker primary
+  // stop_sell = rejection entry (short after sweep above resistance) ← Heatseeker primary
+  // limit     = fade directly into GEX wall (must be explicit)
+  // market    = discouraged on prop accounts (slippage kills R:R)
+  const VALID_ORDER_TYPES = ['stop_buy', 'stop_sell', 'limit', 'market', 'stop_limit'];
+  if (!req.body.order_type) {
+    return res.status(400).json({
+      error: 'order_type is required. Do not rely on defaults.',
+      valid_types: VALID_ORDER_TYPES,
+      guidance: {
+        stop_buy:  'Long entry on reclaim after liquidity sweep below support (Heatseeker primary)',
+        stop_sell: 'Short entry on rejection after grab above resistance (Heatseeker primary)',
+        limit:     'Fade directly into a GEX wall — must be explicitly chosen',
+        market:    'Discouraged on prop accounts — slippage kills R:R'
+      }
+    });
+  }
+  if (!VALID_ORDER_TYPES.includes(req.body.order_type)) {
+    return res.status(400).json({
+      error: `Unknown order_type: ${req.body.order_type}`,
+      valid_types: VALID_ORDER_TYPES
+    });
+  }
+
   const result = await submitTrade(req.body);
   const statusCode = result.status === 'pending_approval' ? 202
     : result.status === 'auto_approved' ? 201
