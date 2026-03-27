@@ -238,34 +238,62 @@ if (config.execution_adapter.active === 'simulated') {
   setInterval(monitorStopOrders, 3000);
 }
 
-// ─── TopstepX Execution Adapter (Placeholder) ───────────────────────────────
 
-async function topstepxExecute(order) {
-  const tsConfig = config.execution_adapter.adapters.topstepx;
+// ─── ProjectX Execution Adapter (Universal Broker Gateway) ──────────────────
+// ProjectX is the universal API gateway covering all supported prop firms:
+// TopstepX (active), The Futures Desk, FuturesElite, Bulenox (all v2_pending)
+// One $14.50/mo subscription (topstep discount code) covers all linked accounts.
+// Dashboard: https://dashboard.projectx.com
 
-  if (!tsConfig.configured || !tsConfig.api_key) {
+async function projectxExecute(order) {
+  const pxConfig = config.execution_adapter.adapters.projectx;
+  const activeFirmKey = pxConfig.active_firm;
+  const firmConfig = pxConfig.firms[activeFirmKey];
+
+  if (!firmConfig || !firmConfig.configured || !firmConfig.api_key) {
     return {
       filled: false,
-      reason: 'TopstepX not configured. Set api_key and username via POST /configure-topstepx',
-      adapter: 'topstepx'
+      reason: `ProjectX not configured for firm: ${activeFirmKey}. Use POST /configure-projectx`,
+      adapter: 'projectx',
+      active_firm: activeFirmKey
     };
   }
 
-  // TODO: Implement TopstepX API integration
-  // 1. Authenticate: POST /api/Auth/loginKey { apiKey, username }
-  // 2. Get account: GET /api/Account/list → extract account_id
-  // 3. Place order: POST /api/Order/place {
-  //      accountId, symbol, action (Buy/Sell),
-  //      orderType (Limit/Market/StopMarket/StopLimit),
-  //      quantity, limitPrice, stopPrice, timeInForce (Day/GTC)
-  //    }
-  // 4. Monitor via SignalR hub for fill confirmations
-  // 5. Bracket orders: place OCO (stop + target) after entry fill
+  // TODO: Implement ProjectX API integration
+  // Auth (OAuth):
+  //   POST {api_base}/api/Auth/loginKey { apiKey, username }
+  //   → returns { token }
+  //
+  // Get account:
+  //   GET {api_base}/api/Account/list  (Bearer token)
+  //   → extract accountId for active_firm
+  //
+  // Place order:
+  //   POST {api_base}/api/Order/place {
+  //     accountId, symbol, action (Buy/Sell),
+  //     orderType (Limit/Market/StopMarket/StopLimit),
+  //     quantity, limitPrice, stopPrice, timeInForce (Day/GTC)
+  //   }
+  //
+  // Monitor fills:
+  //   SignalR hub: {api_base}/hubs/orderHub
+  //   Events: OrderUpdated, PositionUpdated, AccountUpdated
+  //
+  // Bracket orders:
+  //   Place OCO (stop_loss + take_profit) after entry fill confirmation
+  //
+  // Firm routing:
+  //   topstepx  → gateway.topstepx.com  (backend: TopstepX internal)
+  //   tfd_100k  → gateway.projectx.com  (backend: Rithmic)
+  //   fe_100k   → gateway.projectx.com  (backend: DxFeed)
+  //   bulenox   → gateway.projectx.com  (backend: Rithmic)
 
   return {
     filled: false,
-    reason: 'TopstepX adapter: implementation pending. Use simulated adapter for now.',
-    adapter: 'topstepx'
+    reason: `ProjectX adapter: implementation pending for ${activeFirmKey}. Use simulated adapter for now.`,
+    adapter: 'projectx',
+    active_firm: activeFirmKey,
+    firm_label: firmConfig.label
   };
 }
 
@@ -323,8 +351,8 @@ async function executeTrade(proposal) {
 
   // Route to active adapter
   let result;
-  if (config.execution_adapter.active === 'topstepx') {
-    result = await topstepxExecute(order);
+  if (config.execution_adapter.active === 'projectx') {
+    result = await projectxExecute(order);
   } else {
     result = await simulatedExecute(order);
   }
@@ -544,8 +572,9 @@ app.get('/info', (req, res) => {
       'POST /orders/:id/cancel — cancel an open order',
       'POST /orders/:id/close — manually close at market',
       'GET /execution-log — audit trail',
-      'POST /configure-topstepx — set TopstepX API credentials',
-      'POST /adapter — switch execution adapter (simulated/topstepx)',
+      'POST /configure-projectx — set ProjectX credentials for a firm { firm, api_key, username }',
+      'POST /active-firm — switch active firm within ProjectX { firm }',
+      'POST /adapter — switch execution adapter (simulated/projectx)',
       'GET /orders/stops — pending stop orders waiting for trigger',
       'POST /orders/stops/:id/cancel — cancel a pending stop order'
     ]
@@ -707,26 +736,63 @@ app.get('/execution-log', (req, res) => {
   res.json({ log: executionLog.slice(-limit), total: executionLog.length });
 });
 
-// Configure TopstepX
-app.post('/configure-topstepx', (req, res) => {
-  const { api_key, username, account_id } = req.body;
+// Configure ProjectX (for a specific firm)
+// Body: { firm: "topstepx", api_key: "...", username: "...", account_id: "..." }
+app.post('/configure-projectx', (req, res) => {
+  const { firm, api_key, username, account_id } = req.body;
+  const pxConfig = config.execution_adapter.adapters.projectx;
+
+  const targetFirm = firm || pxConfig.active_firm;
+  if (!pxConfig.firms[targetFirm]) {
+    return res.status(400).json({
+      error: 'Unknown firm. Available: ' + Object.keys(pxConfig.firms).join(', '),
+      example: { firm: 'topstepx', api_key: '...', username: '...' }
+    });
+  }
   if (!api_key || !username) {
-    return res.status(400).json({ error: 'Required: api_key, username. Optional: account_id' });
+    return res.status(400).json({ error: 'Required: api_key, username. Optional: firm, account_id' });
   }
 
-  const tsConfig = config.execution_adapter.adapters.topstepx;
-  tsConfig.api_key = api_key;
-  tsConfig.username = username;
-  if (account_id) tsConfig.account_id = account_id;
-  tsConfig.configured = true;
+  const firmConfig = pxConfig.firms[targetFirm];
+  firmConfig.api_key = api_key;
+  firmConfig.username = username;
+  if (account_id) firmConfig.account_id = account_id;
+  firmConfig.configured = true;
 
-  logExecution('topstepx_configured', { username, has_account_id: !!account_id });
+  logExecution('projectx_configured', { firm: targetFirm, username, has_account_id: !!account_id });
 
   res.json({
-    message: 'TopstepX credentials configured',
+    message: `ProjectX credentials configured for: ${targetFirm}`,
+    firm: targetFirm,
+    firm_label: firmConfig.label,
     configured: true,
     username,
-    note: 'Switch to TopstepX adapter with POST /adapter { "adapter": "topstepx" }'
+    note: 'Switch to ProjectX adapter with POST /adapter { "adapter": "projectx" }. To change active firm: POST /active-firm { "firm": "topstepx" }'
+  });
+});
+
+// Switch active firm within ProjectX
+app.post('/active-firm', (req, res) => {
+  const { firm } = req.body;
+  const pxConfig = config.execution_adapter.adapters.projectx;
+
+  if (!pxConfig.firms[firm]) {
+    return res.status(400).json({
+      error: 'Unknown firm. Available: ' + Object.keys(pxConfig.firms).join(', ')
+    });
+  }
+
+  const previous = pxConfig.active_firm;
+  pxConfig.active_firm = firm;
+  logExecution('active_firm_changed', { previous, new_firm: firm, label: pxConfig.firms[firm].label });
+
+  res.json({
+    active_firm: firm,
+    label: pxConfig.firms[firm].label,
+    previous,
+    status: pxConfig.firms[firm].status,
+    configured: pxConfig.firms[firm].configured,
+    timestamp: now()
   });
 });
 
@@ -739,10 +805,14 @@ app.post('/adapter', (req, res) => {
     });
   }
 
-  if (adapter === 'topstepx' && !config.execution_adapter.adapters.topstepx.configured) {
-    return res.status(400).json({
-      error: 'TopstepX not configured. Use POST /configure-topstepx first.'
-    });
+  if (adapter === 'projectx') {
+    const pxConfig = config.execution_adapter.adapters.projectx;
+    const activeFirm = pxConfig.firms[pxConfig.active_firm];
+    if (!activeFirm || !activeFirm.configured) {
+      return res.status(400).json({
+        error: `ProjectX not configured for active firm: ${pxConfig.active_firm}. Use POST /configure-projectx first.`
+      });
+    }
   }
 
   const previous = config.execution_adapter.active;

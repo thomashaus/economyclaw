@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "machine": "ec-prime",
   "port": 8114,
   "sector": "trading",
@@ -13,29 +13,161 @@
         "fill_rate": 0.95,
         "partial_fill_enabled": false
       },
-      "topstepx": {
-        "label": "TopstepX Live Execution",
-        "api_base": "https://gateway.topstepx.com",
-        "auth_endpoint": "/api/Auth/loginKey",
-        "order_endpoint": "/api/Order/place",
-        "position_endpoint": "/api/Position/list",
-        "account_endpoint": "/api/Account/list",
-        "signalr_hub": "/hubs/orderHub",
-        "api_key": null,
-        "username": null,
-        "account_id": null,
-        "configured": false,
-        "multi_account": {
-          "enabled": false,
-          "accounts": [],
-          "notes": "One trade decision fans out to all configured accounts at the API layer. Our pipeline stays single-signal."
+      "projectx": {
+        "label": "ProjectX API Gateway (Universal Broker Layer)",
+        "notes": [
+          "ProjectX is the universal API gateway for all supported prop firms.",
+          "One ProjectX subscription ($14.50/mo with topstep discount) covers all linked firm accounts.",
+          "Auth: OAuth. Protocols: REST + WebSocket.",
+          "dashboard: https://dashboard.projectx.com",
+          "discount_code: topstep (50% off = $14.50/mo)"
+        ],
+        "auth": {
+          "method": "oauth",
+          "dashboard_url": "https://dashboard.projectx.com",
+          "subscription_cost_monthly": 14.50,
+          "discount_code": "topstep"
+        },
+        "active_firm": "topstepx",
+        "firms": {
+          "topstepx": {
+            "label": "TopstepX (Topstep Trading Combine / XFA / Live)",
+            "status": "active",
+            "api_base": "https://gateway.topstepx.com",
+            "auth_endpoint": "/api/Auth/loginKey",
+            "order_endpoint": "/api/Order/place",
+            "position_endpoint": "/api/Position/list",
+            "account_endpoint": "/api/Account/list",
+            "signalr_hub": "/hubs/orderHub",
+            "backend_broker": "internal",
+            "api_key": null,
+            "username": null,
+            "account_id": null,
+            "configured": false,
+            "env_var": "TOPSTEPX_API_KEY",
+            "multi_account": {
+              "enabled": false,
+              "accounts": [],
+              "notes": "One trade decision fans out to all configured accounts. Pipeline stays single-signal."
+            }
+          },
+          "tfd_100k": {
+            "label": "The Futures Desk — 100K Popular",
+            "status": "v2_pending",
+            "api_base": "https://gateway.projectx.com",
+            "backend_broker": "rithmic",
+            "api_key": null,
+            "username": null,
+            "account_id": null,
+            "configured": false,
+            "env_var": "PROJECTX_TFD_API_KEY",
+            "firm_rules": {
+              "max_contracts_mini": 4,
+              "max_contracts_micro": 40,
+              "daily_loss_limit": 1200,
+              "max_drawdown": 3000,
+              "drawdown_type": "eod_trailing",
+              "hard_stop_daily_loss": 1100,
+              "hard_stop_drawdown": 2800,
+              "flatten_time_ct": "15:45",
+              "pre_flatten_warning_ct": "15:30",
+              "scalping_allowed": true,
+              "consistency_rule_pct": 0.20,
+              "commissions": {
+                "emini_per_side": 1.20,
+                "micro_per_side": 0.40
+              }
+            }
+          },
+          "fe_100k": {
+            "label": "FuturesElite — 100K Elite",
+            "status": "v2_pending",
+            "api_base": "https://gateway.projectx.com",
+            "backend_broker": "dxfeed",
+            "api_key": null,
+            "username": null,
+            "account_id": null,
+            "configured": false,
+            "env_var": "PROJECTX_FE_API_KEY",
+            "firm_rules": {
+              "max_contracts_mini": 8,
+              "max_contracts_micro": 80,
+              "daily_loss_limit": null,
+              "max_drawdown": 3000,
+              "drawdown_type": "eod_trailing",
+              "hard_stop_daily_loss": null,
+              "recommended_daily_stop": 1500,
+              "hard_stop_drawdown": 2800,
+              "flatten_time_ct": "15:45",
+              "pre_flatten_warning_ct": "15:30",
+              "scalping_allowed": false,
+              "min_hold_time_seconds": null,
+              "consistency_rule_pct": 0.20,
+              "note": "⚠️ SCALPING DISABLED. Verify minimum hold time before activating."
+            }
+          },
+          "bulenox_100k": {
+            "label": "Bulenox — 100K Option 2 (EOD Drawdown)",
+            "status": "v2_pending",
+            "api_base": "https://gateway.projectx.com",
+            "backend_broker": "rithmic",
+            "api_key": null,
+            "username": null,
+            "account_id": null,
+            "configured": false,
+            "env_var": "PROJECTX_BULENOX_API_KEY",
+            "firm_rules": {
+              "drawdown_type": "eod_trailing",
+              "max_drawdown": 3000,
+              "daily_loss_limit": 2200,
+              "daily_loss_behavior": "suspend_day_not_breach",
+              "hard_stop_daily_loss": 2000,
+              "hard_stop_drawdown": 2800,
+              "flatten_time_ct": "15:45",
+              "pre_flatten_warning_ct": "15:30",
+              "scalping_allowed": true,
+              "consistency_rule_pct": null,
+              "scaling_tiers": [
+                { "profit_floor": 0, "profit_ceiling": 2000, "max_contracts_mini": 3, "max_contracts_micro": 30 },
+                { "profit_floor": 2001, "profit_ceiling": 3000, "max_contracts_mini": 5, "max_contracts_micro": 50 },
+                { "profit_floor": 3001, "profit_ceiling": 5000, "max_contracts_mini": 8, "max_contracts_micro": 80 },
+                { "profit_floor": 5001, "profit_ceiling": null, "max_contracts_mini": 12, "max_contracts_micro": 120 }
+              ],
+              "note": "Scaling model — bot must track daily P&L tier to determine current contract limit."
+            }
+          },
+          "daytraders_150k": {
+            "label": "DayTraders — 150K S2F (⚠️ Automation UNVERIFIED)",
+            "status": "v2_pending_verification",
+            "api_base": "https://gateway.projectx.com",
+            "backend_broker": "rithmic",
+            "api_key": null,
+            "username": null,
+            "account_id": null,
+            "configured": false,
+            "env_var": "PROJECTX_DAYTRADERS_API_KEY",
+            "firm_rules": {
+              "max_contracts_mini": 24,
+              "max_contracts_micro": 240,
+              "daily_loss_limit": 3750,
+              "max_drawdown": 6000,
+              "drawdown_type": "eod_trailing",
+              "hard_stop_daily_loss": 3500,
+              "hard_stop_drawdown": 5500,
+              "min_daily_profit_for_payout": 300,
+              "consistency_rule_pct": 0.20,
+              "flatten_time_ct": "15:45",
+              "pre_flatten_warning_ct": "15:30",
+              "note": "⚠️ DO NOT ACTIVATE until automation policy verified in writing with DayTraders support."
+            }
+          }
         }
       }
     }
   },
   "instruments": {
     "ES": {
-      "topstep_symbol": "ES",
+      "projectx_symbol": "ES",
       "type": "future",
       "exchange": "CME",
       "name": "E-mini S&P 500",
@@ -49,7 +181,7 @@
       "tracks": ["SPX", "SPY"]
     },
     "MES": {
-      "topstep_symbol": "MES",
+      "projectx_symbol": "MES",
       "type": "future",
       "exchange": "CME",
       "name": "Micro E-mini S&P 500",
@@ -63,7 +195,7 @@
       "tracks": ["SPX", "SPY"]
     },
     "NQ": {
-      "topstep_symbol": "NQ",
+      "projectx_symbol": "NQ",
       "type": "future",
       "exchange": "CME",
       "name": "E-mini NASDAQ 100",
@@ -77,7 +209,7 @@
       "tracks": ["NDX", "QQQ"]
     },
     "MNQ": {
-      "topstep_symbol": "MNQ",
+      "projectx_symbol": "MNQ",
       "type": "future",
       "exchange": "CME",
       "name": "Micro E-mini NASDAQ 100",
