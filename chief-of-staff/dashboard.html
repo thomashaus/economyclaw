@@ -12,7 +12,7 @@
     header h1 { font-size: 22px; font-weight: 700; color: #58a6ff; }
     header p  { font-size: 13px; color: #8b949e; margin-top: 4px; }
 
-    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
     .kpi { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
     .kpi .label { font-size: 11px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
     .kpi .value { font-size: 32px; font-weight: 700; color: #e6edf3; }
@@ -20,9 +20,12 @@
     .kpi .value.red    { color: #f85149; }
     .kpi .value.yellow { color: #d29922; }
     .kpi .value.blue   { color: #58a6ff; }
+    .kpi .value.orange { color: #e3b341; }
 
     section { margin-bottom: 28px; }
-    section h2 { font-size: 14px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #21262d; }
+    section h2 { font-size: 14px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #21262d; display: flex; align-items: center; gap: 8px; }
+    section h2 .badge-count { background: #1f6feb; color: #fff; border-radius: 12px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+    section h2 .badge-count.urgent { background: #da3633; }
 
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { text-align: left; font-size: 11px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; border-bottom: 1px solid #21262d; }
@@ -31,16 +34,34 @@
     tr:hover td { background: #161b22; }
 
     .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-    .badge.online   { background: #1a4731; color: #3fb950; }
-    .badge.offline  { background: #3d1f1f; color: #f85149; }
-    .badge.active   { background: #1a3a5c; color: #58a6ff; }
-    .badge.planned  { background: #2a2a2a; color: #8b949e; }
+    .badge.online     { background: #1a4731; color: #3fb950; }
+    .badge.offline    { background: #3d1f1f; color: #f85149; }
+    .badge.active     { background: #1a3a5c; color: #58a6ff; }
+    .badge.planned    { background: #2a2a2a; color: #8b949e; }
+    .badge.framing    { background: #2d2016; color: #e3b341; }
+    .badge.submitting { background: #1a2a3a; color: #58a6ff; }
+    .badge.submitted  { background: #1a4731; color: #3fb950; }
+    .badge.failed     { background: #3d1f1f; color: #f85149; }
+    .badge.pending    { background: #2d2016; color: #e3b341; }
+    .badge.answered   { background: #1a4731; color: #3fb950; }
+
+    .progress-bar { background: #21262d; border-radius: 4px; height: 6px; width: 80px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 6px; }
+    .progress-bar .fill { background: #1f6feb; height: 100%; border-radius: 4px; transition: width .3s; }
+    .progress-bar .fill.complete { background: #3fb950; }
 
     .outcomes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
     .outcome-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
     .outcome-card .name  { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
     .outcome-card .meta  { font-size: 12px; color: #8b949e; }
     .outcome-card.active { border-color: #1f6feb; }
+
+    .empty-state { padding: 20px; text-align: center; color: #8b949e; font-size: 13px; font-style: italic; }
+
+    .q-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .q-card .q-meta { font-size: 11px; color: #8b949e; margin-bottom: 6px; }
+    .q-card .q-text { font-size: 14px; color: #e6edf3; margin-bottom: 8px; line-height: 1.5; }
+    .q-card .q-context { font-size: 12px; color: #8b949e; font-style: italic; margin-bottom: 8px; }
+    .q-card .q-id { font-family: monospace; font-size: 11px; color: #58a6ff; }
 
     .ts { font-size: 11px; color: #8b949e; text-align: right; margin-top: 8px; }
     .loading { color: #8b949e; font-style: italic; font-size: 13px; }
@@ -59,7 +80,7 @@
 <!-- KPI row -->
 <div class="kpi-row">
   <div class="kpi">
-    <div class="label">Trading Services Online</div>
+    <div class="label">Trading Services</div>
     <div class="value blue" id="kpi-services">—</div>
   </div>
   <div class="kpi">
@@ -78,7 +99,41 @@
     <div class="label">Open Positions</div>
     <div class="value" id="kpi-open">—</div>
   </div>
+  <div class="kpi">
+    <div class="label">Pending Intakes</div>
+    <div class="value orange" id="kpi-intakes">—</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Clarifications Needed</div>
+    <div class="value" id="kpi-clarifications">—</div>
+  </div>
 </div>
+
+<!-- Pending clarifications from Governor -->
+<section id="section-clarifications">
+  <h2>Pending Clarifications from Governor <span class="badge-count urgent" id="clarif-count" style="display:none">0</span></h2>
+  <div id="clarifications-list"><div class="empty-state">Checking with Governor&hellip;</div></div>
+</section>
+
+<!-- Intake queue -->
+<section>
+  <h2>Intake Queue <span class="badge-count" id="intake-count" style="display:none">0</span></h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Request</th>
+        <th>Status</th>
+        <th>Framing</th>
+        <th>Work Packages</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody id="intake-table">
+      <tr><td colspan="6" class="loading">Loading&hellip;</td></tr>
+    </tbody>
+  </table>
+</section>
 
 <!-- Trading service health -->
 <section>
@@ -130,12 +185,115 @@
     return `${sign}$${parseFloat(v).toFixed(2)}`;
   }
 
-  async function refresh() {
+  function timeAgo(iso) {
+    if (!iso) return '—';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  }
+
+  async function refreshClarifications() {
     try {
-      // Trading summary
+      const data = await fetch(`${BASE}/clarifications/pending`).then(r => r.json());
+      const count = data.count || 0;
+
+      // Update KPI
+      const kpiEl = document.getElementById('kpi-clarifications');
+      kpiEl.textContent = count;
+      kpiEl.className = 'value ' + (count > 0 ? 'red' : 'green');
+
+      // Badge
+      const badge = document.getElementById('clarif-count');
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      const container = document.getElementById('clarifications-list');
+      if (!count) {
+        container.innerHTML = '<div class="empty-state">No pending clarifications — Governor has everything it needs.</div>';
+        return;
+      }
+
+      container.innerHTML = data.questions.map(q => `
+        <div class="q-card">
+          <div class="q-meta">
+            <span class="q-id">${q.id}</span>
+            &nbsp;·&nbsp; asked by <strong>${q.asked_by}</strong>
+            &nbsp;·&nbsp; ${timeAgo(q.asked_at)}
+            ${q.work_package_id ? `&nbsp;·&nbsp; re: ${q.work_package_id}` : ''}
+          </div>
+          <div class="q-text">${q.question}</div>
+          ${q.context ? `<div class="q-context">${q.context}</div>` : ''}
+          ${q.options ? `<div style="font-size:12px;color:#58a6ff;margin-top:4px">Options: ${q.options.join(' / ')}</div>` : ''}
+          <div style="margin-top:8px;font-size:11px;color:#8b949e">
+            Answer via: <code style="color:#58a6ff">POST /clarifications/${q.id}/answer</code> with <code style="color:#8b949e">{ "answer": "..." }</code>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      document.getElementById('clarifications-list').innerHTML =
+        `<div class="empty-state" style="color:#f85149">Could not reach Governor: ${err.message}</div>`;
+    }
+  }
+
+  async function refreshIntakes() {
+    try {
+      const data = await fetch(`${BASE}/intake`).then(r => r.json());
+      const pending = data.pending_framing || 0;
+
+      // Update KPI
+      const kpiEl = document.getElementById('kpi-intakes');
+      kpiEl.textContent = pending;
+      kpiEl.className = 'value ' + (pending > 0 ? 'orange' : 'green');
+
+      // Badge
+      const badge = document.getElementById('intake-count');
+      if (pending > 0) {
+        badge.textContent = pending;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      const tbody = document.getElementById('intake-table');
+      if (!data.intakes || !data.intakes.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No intake requests yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = [...data.intakes].reverse().map(i => {
+        const pct = i.framing_pct || 0;
+        const statusBadge = `<span class="badge ${i.status}">${i.status}</span>`;
+        const progressBar = `<div class="progress-bar"><div class="fill ${pct === 100 ? 'complete' : ''}" style="width:${pct}%"></div></div>`;
+        const wps = i.governor_work_packages?.length
+          ? `<span style="color:#8b949e;font-size:11px">${i.governor_work_packages.join(', ')}</span>`
+          : '—';
+        return `<tr>
+          <td><span style="font-family:monospace;color:#58a6ff">${i.id}</span></td>
+          <td style="color:#e6edf3;max-width:300px">${i.request.substring(0, 80)}${i.request.length > 80 ? '…' : ''}</td>
+          <td>${statusBadge}</td>
+          <td>${pct}%${progressBar}</td>
+          <td>${wps}</td>
+          <td style="color:#8b949e;font-size:12px">${timeAgo(i.created_at)}</td>
+        </tr>`;
+      }).join('');
+    } catch (err) {
+      document.getElementById('intake-table').innerHTML =
+        `<tr><td colspan="6" style="color:#f85149">Failed to load intakes: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function refreshTrading() {
+    try {
       const summary = await fetch(`${BASE}/trading/summary`).then(r => r.json());
 
-      // KPIs
       document.getElementById('kpi-services').textContent =
         `${summary.services_online}/${summary.services_total}`;
 
@@ -157,24 +315,24 @@
         pf.className = 'value ' + (perf.profit_factor >= 1.5 ? 'green' : perf.profit_factor < 1 ? 'red' : 'yellow');
       }
 
-      // Open positions from trade-execution health
       const execSvc = summary.services.find(s => s.name === 'trade-execution');
       if (execSvc?.data?.open_orders !== undefined) {
         document.getElementById('kpi-open').textContent = execSvc.data.open_orders;
       }
 
-      // Service health table
       const tbody = document.getElementById('trading-services');
       tbody.innerHTML = summary.services.map(svc => {
-        const badge = svc.online ? '<span class="badge online">online</span>' : '<span class="badge offline">offline</span>';
+        const badge = svc.online
+          ? '<span class="badge online">online</span>'
+          : '<span class="badge offline">offline</span>';
         let detail = '—';
         if (svc.online && svc.data) {
           const d = svc.data;
-          if (svc.name === 'trade-execution') detail = `adapter: ${d.adapter || '—'} | filled today: ${d.filled_today ?? '—'} | open: ${d.open_orders ?? '—'}`;
+          if (svc.name === 'trade-execution')  detail = `adapter: ${d.adapter || '—'} | filled today: ${d.filled_today ?? '—'} | open: ${d.open_orders ?? '—'}`;
           else if (svc.name === 'risk-management') detail = `daily P&L: ${pnlStr(d.daily_pnl)} | open positions: ${d.open_positions ?? '—'}`;
-          else if (svc.name === 'heatseeker') detail = `signals: ${d.signals_today ?? '—'} | last analysis: ${d.last_analysis ? new Date(d.last_analysis).toLocaleTimeString() : '—'}`;
+          else if (svc.name === 'heatseeker')   detail = `signals: ${d.signals_today ?? '—'} | last analysis: ${d.last_analysis ? new Date(d.last_analysis).toLocaleTimeString() : '—'}`;
           else if (svc.name === 'trade-approval') detail = `mode: ${d.mode || '—'} | queued: ${d.queued ?? '—'} | approved today: ${d.approved_today ?? '—'}`;
-          else if (svc.name === 'market-data') detail = `market: ${d.market_status || '—'} | session: ${d.session || '—'}`;
+          else if (svc.name === 'market-data')  detail = `market: ${d.market_status || '—'} | session: ${d.session || '—'}`;
           else detail = `uptime: ${d.uptime ? Math.floor(d.uptime) + 's' : '—'}`;
         } else if (!svc.online) {
           detail = '<span style="color:#f85149">unreachable</span>';
@@ -186,12 +344,12 @@
           <td style="color:#8b949e;font-size:12px">${detail}</td>
         </tr>`;
       }).join('');
-
     } catch (err) {
-      console.error('Summary fetch failed:', err);
+      console.error('Trading summary failed:', err);
     }
+  }
 
-    // Outcomes grid
+  async function refreshOutcomes() {
     try {
       const info = await fetch(`${BASE}/info`).then(r => r.json());
       const grid = document.getElementById('outcomes-grid');
@@ -205,6 +363,15 @@
         </div>
       `).join('');
     } catch (err) {}
+  }
+
+  async function refresh() {
+    await Promise.allSettled([
+      refreshClarifications(),
+      refreshIntakes(),
+      refreshTrading(),
+      refreshOutcomes()
+    ]);
 
     document.getElementById('last-refresh').textContent =
       'Last refresh: ' + new Date().toLocaleTimeString();
