@@ -1,7 +1,393 @@
 {
-  "requests": {},
-  "completedCount": 0,
+  "requests": {
+    "TD-mn94og9j-ff83b2": {
+      "id": "TD-mn94og9j-ff83b2",
+      "capability": "gap_analysis",
+      "priority": "high",
+      "payload": {
+        "work_package_id": "WP-CAP-001-mn94og8x",
+        "capability_id": "CAP-001",
+        "name": "Setup Quality Assessment",
+        "description": "Ability to assess the quality of a potential trade setup and assign a confidence tier (A+, B, C). This determines position sizing.",
+        "desired_state": "Programmatic assessment using market data, chart structure, Heatseeker signals, VIX regime, and cross-ticker alignment. No human attestation required for data-available items."
+      },
+      "requester": "governor",
+      "description": "Decompose and build: Setup Quality Assessment",
+      "status": "escalated",
+      "submitted_at": "2026-03-27T16:40:58.713Z",
+      "assigned_to": "entrepreneurial",
+      "assigned_at": "2026-03-27T16:40:58.736Z",
+      "completed_at": null,
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T16:40:58.713Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T16:40:58.736Z",
+          "event": "assigned",
+          "service": "entrepreneurial",
+          "port": 8031,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:11:41.711Z",
+          "event": "escalated",
+          "reason": "Request stale: queued for 31 minutes"
+        }
+      ],
+      "assigned_port": 8031,
+      "trust_score_at_assignment": 1,
+      "escalated_at": "2026-03-27T17:11:41.711Z",
+      "escalation_reason": "Request stale: queued for 31 minutes"
+    },
+    "TD-mn94og9w-9ca67e": {
+      "id": "TD-mn94og9w-9ca67e",
+      "capability": "gap_analysis",
+      "priority": "high",
+      "payload": {
+        "work_package_id": "WP-CAP-002-mn94og8x",
+        "capability_id": "CAP-002",
+        "name": "Chart Structure Detection",
+        "description": "Ability to identify key price patterns (double bottom/top, S&R levels, session levels) from historical candle data on multiple timeframes (hourly, 3-minute).",
+        "desired_state": "Historical candle storage (hourly + 3-min), swing point detection, double bottom/top pattern matching, S&R level identification with touch-count scoring."
+      },
+      "requester": "governor",
+      "description": "Decompose and build: Chart Structure Detection",
+      "status": "escalated",
+      "submitted_at": "2026-03-27T16:40:58.724Z",
+      "assigned_to": "entrepreneurial",
+      "assigned_at": "2026-03-27T16:40:58.739Z",
+      "completed_at": null,
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T16:40:58.724Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T16:40:58.739Z",
+          "event": "assigned",
+          "service": "entrepreneurial",
+          "port": 8031,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:11:41.717Z",
+          "event": "escalated",
+          "reason": "Request stale: queued for 31 minutes"
+        }
+      ],
+      "assigned_port": 8031,
+      "trust_score_at_assignment": 1,
+      "escalated_at": "2026-03-27T17:11:41.717Z",
+      "escalation_reason": "Request stale: queued for 31 minutes"
+    },
+    "TD-mn94og9x-273b95": {
+      "id": "TD-mn94og9x-273b95",
+      "capability": "gap_analysis",
+      "priority": "high",
+      "payload": {
+        "work_package_id": "WP-CAP-003-mn94og8x",
+        "capability_id": "CAP-003",
+        "name": "Real-Time Market Data Feed",
+        "description": "Live price data for ES, MES, NQ, MNQ with sub-second latency. Required for stop order monitoring, bracket management, and real-time risk tracking.",
+        "desired_state": "Real market data feed (TopstepX API or third-party provider). Prices available via internal API for all trading services."
+      },
+      "requester": "governor",
+      "description": "Decompose and build: Real-Time Market Data Feed",
+      "status": "escalated",
+      "submitted_at": "2026-03-27T16:40:58.726Z",
+      "assigned_to": "entrepreneurial",
+      "assigned_at": "2026-03-27T16:40:58.738Z",
+      "completed_at": null,
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T16:40:58.726Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T16:40:58.738Z",
+          "event": "assigned",
+          "service": "entrepreneurial",
+          "port": 8031,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:11:41.718Z",
+          "event": "escalated",
+          "reason": "Request stale: queued for 31 minutes"
+        }
+      ],
+      "assigned_port": 8031,
+      "trust_score_at_assignment": 1,
+      "escalated_at": "2026-03-27T17:11:41.718Z",
+      "escalation_reason": "Request stale: queued for 31 minutes"
+    },
+    "TD-mn94og9z-d6f14e": {
+      "id": "TD-mn94og9z-d6f14e",
+      "capability": "gap_analysis",
+      "priority": "high",
+      "payload": {
+        "work_package_id": "WP-CAP-004-mn94og8x",
+        "capability_id": "CAP-004",
+        "name": "Broker API Integration",
+        "description": "Ability to place, modify, and cancel orders through TopstepX API. Support for limit, market, stop, and bracket orders across multiple accounts.",
+        "desired_state": "Working TopstepX adapter with auth, order placement, position tracking, SignalR fill monitoring, and multi-account fan-out."
+      },
+      "requester": "governor",
+      "description": "Decompose and build: Broker API Integration",
+      "status": "escalated",
+      "submitted_at": "2026-03-27T16:40:58.727Z",
+      "assigned_to": "entrepreneurial",
+      "assigned_at": "2026-03-27T16:40:58.739Z",
+      "completed_at": null,
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T16:40:58.727Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T16:40:58.739Z",
+          "event": "assigned",
+          "service": "entrepreneurial",
+          "port": 8031,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:11:41.719Z",
+          "event": "escalated",
+          "reason": "Request stale: queued for 31 minutes"
+        }
+      ],
+      "assigned_port": 8031,
+      "trust_score_at_assignment": 1,
+      "escalated_at": "2026-03-27T17:11:41.719Z",
+      "escalation_reason": "Request stale: queued for 31 minutes"
+    },
+    "TD-mn94oga2-92a89a": {
+      "id": "TD-mn94oga2-92a89a",
+      "capability": "gap_analysis",
+      "priority": "normal",
+      "payload": {
+        "work_package_id": "WP-CAP-005-mn94og8x",
+        "capability_id": "CAP-005",
+        "name": "Economic Calendar Integration",
+        "description": "Awareness of upcoming high-impact economic events for news blackout enforcement.",
+        "desired_state": "Auto-populated economic calendar with dates/times for upcoming events. Risk management can query 'any events in next N minutes?' and get a real answer."
+      },
+      "requester": "governor",
+      "description": "Decompose and build: Economic Calendar Integration",
+      "status": "escalated",
+      "submitted_at": "2026-03-27T16:40:58.730Z",
+      "assigned_to": "entrepreneurial",
+      "assigned_at": "2026-03-27T16:40:58.739Z",
+      "completed_at": null,
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T16:40:58.730Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T16:40:58.739Z",
+          "event": "assigned",
+          "service": "entrepreneurial",
+          "port": 8031,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:11:41.719Z",
+          "event": "escalated",
+          "reason": "Request stale: queued for 31 minutes"
+        }
+      ],
+      "assigned_port": 8031,
+      "trust_score_at_assignment": 1,
+      "escalated_at": "2026-03-27T17:11:41.719Z",
+      "escalation_reason": "Request stale: queued for 31 minutes"
+    },
+    "TD-mn94oga4-a0a54f": {
+      "id": "TD-mn94oga4-a0a54f",
+      "capability": "gap_analysis",
+      "priority": "normal",
+      "payload": {
+        "work_package_id": "WP-CAP-006-mn94og8x",
+        "capability_id": "CAP-006",
+        "name": "Trading Dashboard",
+        "description": "Real-time visual dashboard for human oversight. Shows open positions, P&L, active signals, risk status, and system health.",
+        "desired_state": "Web-based dashboard accessible from any device. Real-time updates. Kill-switch button. Position management controls."
+      },
+      "requester": "governor",
+      "description": "Decompose and build: Trading Dashboard",
+      "status": "escalated",
+      "submitted_at": "2026-03-27T16:40:58.732Z",
+      "assigned_to": "entrepreneurial",
+      "assigned_at": "2026-03-27T16:40:58.741Z",
+      "completed_at": null,
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T16:40:58.732Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T16:40:58.741Z",
+          "event": "assigned",
+          "service": "entrepreneurial",
+          "port": 8031,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:11:41.720Z",
+          "event": "escalated",
+          "reason": "Request stale: queued for 31 minutes"
+        }
+      ],
+      "assigned_port": 8031,
+      "trust_score_at_assignment": 1,
+      "escalated_at": "2026-03-27T17:11:41.720Z",
+      "escalation_reason": "Request stale: queued for 31 minutes"
+    },
+    "TD-mn94ogab-849940": {
+      "id": "TD-mn94ogab-849940",
+      "capability": "gap_analysis",
+      "priority": "normal",
+      "payload": {
+        "work_package_id": "WP-CAP-007-mn94og8x",
+        "capability_id": "CAP-007",
+        "name": "Backtesting Engine",
+        "description": "Ability to test trading strategies against historical data before deploying them live.",
+        "desired_state": "Feed historical candle + GEX/VEX data through the pipeline. Score strategy performance (win rate, avg R:R, max drawdown, consistency rule compliance)."
+      },
+      "requester": "governor",
+      "description": "Decompose and build: Backtesting Engine",
+      "status": "escalated",
+      "submitted_at": "2026-03-27T16:40:58.740Z",
+      "assigned_to": "entrepreneurial",
+      "assigned_at": "2026-03-27T16:40:58.740Z",
+      "completed_at": null,
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T16:40:58.740Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T16:40:58.740Z",
+          "event": "assigned",
+          "service": "entrepreneurial",
+          "port": 8031,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:11:41.720Z",
+          "event": "escalated",
+          "reason": "Request stale: queued for 31 minutes"
+        }
+      ],
+      "assigned_port": 8031,
+      "trust_score_at_assignment": 1,
+      "escalated_at": "2026-03-27T17:11:41.720Z",
+      "escalation_reason": "Request stale: queued for 31 minutes"
+    },
+    "TD-mn94ogad-6266f0": {
+      "id": "TD-mn94ogad-6266f0",
+      "capability": "gap_analysis",
+      "priority": "normal",
+      "payload": {
+        "work_package_id": "WP-CAP-008-mn94og8x",
+        "capability_id": "CAP-008",
+        "name": "Heatseeker Data Ingestion",
+        "description": "Automated ingestion of GEX/VEX map data from Heatseeker source (currently manual screenshot review).",
+        "desired_state": "Automated or semi-automated ingestion. Could be screen capture + OCR, API if available, or structured data feed."
+      },
+      "requester": "governor",
+      "description": "Decompose and build: Heatseeker Data Ingestion",
+      "status": "escalated",
+      "submitted_at": "2026-03-27T16:40:58.741Z",
+      "assigned_to": "entrepreneurial",
+      "assigned_at": "2026-03-27T16:40:58.742Z",
+      "completed_at": null,
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T16:40:58.741Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T16:40:58.742Z",
+          "event": "assigned",
+          "service": "entrepreneurial",
+          "port": 8031,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:11:41.720Z",
+          "event": "escalated",
+          "reason": "Request stale: queued for 31 minutes"
+        }
+      ],
+      "assigned_port": 8031,
+      "trust_score_at_assignment": 1,
+      "escalated_at": "2026-03-27T17:11:41.720Z",
+      "escalation_reason": "Request stale: queued for 31 minutes"
+    },
+    "TD-mn96im40-58a80b": {
+      "id": "TD-mn96im40-58a80b",
+      "capability": "security_scan",
+      "priority": "normal",
+      "payload": {
+        "work_package_id": "WP-TEST-001"
+      },
+      "requester": "governor",
+      "description": "Assess current API key management practices and recommend improvements for the Supply Economy",
+      "status": "completed",
+      "submitted_at": "2026-03-27T17:32:25.584Z",
+      "assigned_to": "security",
+      "assigned_at": "2026-03-27T17:32:25.592Z",
+      "completed_at": "2026-03-27T17:38:12.330Z",
+      "retry_count": 0,
+      "events": [
+        {
+          "timestamp": "2026-03-27T17:32:25.584Z",
+          "event": "submitted"
+        },
+        {
+          "timestamp": "2026-03-27T17:32:25.593Z",
+          "event": "assigned",
+          "service": "security",
+          "port": 8010,
+          "trust_score": 1
+        },
+        {
+          "timestamp": "2026-03-27T17:38:12.330Z",
+          "event": "completed",
+          "completed_by": "security"
+        }
+      ],
+      "assigned_port": 8010,
+      "trust_score_at_assignment": 1,
+      "result": {
+        "assessment": "Work Package Analysis for Security Scan of API Key Management:\n\nConcrete Deliverables:\n1. Comprehensive API Key Management Assessment Report\n2. Risk Severity Matrix\n3. Recommended Security Improvement Roadmap\n\nSpecific Analysis Steps:\n- Inventory current API key generation mechanisms\n- Review existing key rotation and revocation processes\n- Assess key storage and transmission security\n- Evaluate access control and permission granularity\n- Check encryption standards for key at rest and in transit\n\nRequests to Other Services:\n- Identity Service: Provide current API key generation logs\n- Infrastructure Service: Share current key storage architecture details\n- Audit Service: Retrieve historical key usage and access patterns\n\nProposed Deliverable Structure:\n\n1. Assessment Report\n- Current state analysis\n- Identified vulnerabilities\n- Compliance gaps\n- Quantitative risk scoring\n\n2. Risk Severity Matrix\n- Low/Medium/High risk categorizations\n- Potential impact assessments\n- Exploit probability estimates\n\n3. Improvement Roadmap\n- Immediate mitigation recommendations\n- Short-term (30-day) action items\n- Long-term architectural improvements\n- Estimated implementation complexity\n\nPreliminary Recommendations (Draft):\n- Implement dynamic key rotation (every 90 days)\n- Add multi-factor authentication for key management\n- Create granular, role-based key permissions\n- Enhance key encryption at rest\n- Develop comprehensive key lifecycle management\n\nConstraints & Considerations:\n- Must maintain system availability\n- Minimize operational disruption\n- Align with existing architectural patterns\n\nNext Action: Request detailed current API key management documentation from Identity Service to begin deep analysis.",
+        "model_used": "anthropic/claude-3-5-haiku",
+        "tokens_used": {
+          "prompt": 226,
+          "completion": 364,
+          "total": 590
+        },
+        "cost": 0.0016368,
+        "next_steps": "Assessment complete. Awaiting human review or follow-up work packages.",
+        "produced_by": "security"
+      },
+      "completed_by": "security"
+    }
+  },
+  "completedCount": 1,
   "failedCount": 0,
-  "escalatedCount": 0,
-  "savedAt": "2026-03-25T18:18:56.773Z"
+  "escalatedCount": 8,
+  "savedAt": "2026-03-27T17:54:35.153Z"
 }
