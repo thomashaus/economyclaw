@@ -410,5 +410,5 @@
   "min_rr_ratio": 3.0,
   "market_data_url": "http://localhost:8110",
   "risk_management_url": "http://localhost:8112",
-  "registry_url": "http://localhost:8099"
+  "registry_url": "http://localhost:8200"
 }

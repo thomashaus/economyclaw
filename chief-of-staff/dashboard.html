@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EconomyClaw — Chief of Staff</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; padding: 24px; }
+
+    header { margin-bottom: 28px; }
+    header h1 { font-size: 22px; font-weight: 700; color: #58a6ff; }
+    header p  { font-size: 13px; color: #8b949e; margin-top: 4px; }
+
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .kpi { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+    .kpi .label { font-size: 11px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .kpi .value { font-size: 32px; font-weight: 700; color: #e6edf3; }
+    .kpi .value.green  { color: #3fb950; }
+    .kpi .value.red    { color: #f85149; }
+    .kpi .value.yellow { color: #d29922; }
+    .kpi .value.blue   { color: #58a6ff; }
+
+    section { margin-bottom: 28px; }
+    section h2 { font-size: 14px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #21262d; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; font-size: 11px; font-weight: 600; color: #8b949e; text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; border-bottom: 1px solid #21262d; }
+    td { padding: 10px 12px; border-bottom: 1px solid #161b22; color: #e6edf3; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #161b22; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge.online   { background: #1a4731; color: #3fb950; }
+    .badge.offline  { background: #3d1f1f; color: #f85149; }
+    .badge.active   { background: #1a3a5c; color: #58a6ff; }
+    .badge.planned  { background: #2a2a2a; color: #8b949e; }
+
+    .outcomes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .outcome-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+    .outcome-card .name  { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .outcome-card .meta  { font-size: 12px; color: #8b949e; }
+    .outcome-card.active { border-color: #1f6feb; }
+
+    .ts { font-size: 11px; color: #8b949e; text-align: right; margin-top: 8px; }
+    .loading { color: #8b949e; font-style: italic; font-size: 13px; }
+    .pnl-pos { color: #3fb950; font-weight: 700; }
+    .pnl-neg { color: #f85149; font-weight: 700; }
+    .pnl-neu { color: #8b949e; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>EconomyClaw — Chief of Staff</h1>
+  <p id="subtitle">Demand Economy Dashboard &mdash; EC-Prime</p>
+</header>
+
+<!-- KPI row -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="label">Trading Services Online</div>
+    <div class="value blue" id="kpi-services">—</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Today&rsquo;s P&L</div>
+    <div class="value" id="kpi-pnl">—</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Win Rate</div>
+    <div class="value" id="kpi-winrate">—</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Profit Factor</div>
+    <div class="value" id="kpi-pf">—</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Open Positions</div>
+    <div class="value" id="kpi-open">—</div>
+  </div>
+</div>
+
+<!-- Trading service health -->
+<section>
+  <h2>Trading Pipeline</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Service</th>
+        <th>Port</th>
+        <th>Status</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody id="trading-services">
+      <tr><td colspan="4" class="loading">Loading&hellip;</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Demand outcomes overview -->
+<section>
+  <h2>Demand Outcomes</h2>
+  <div class="outcomes-grid" id="outcomes-grid">
+    <div class="loading">Loading&hellip;</div>
+  </div>
+</section>
+
+<div class="ts" id="last-refresh">—</div>
+
+<script>
+  const HOST = window.location.hostname;
+  const BASE = `http://${HOST}:8200`;
+
+  function fmt(v) {
+    if (v === null || v === undefined) return '—';
+    return v;
+  }
+
+  function pnlClass(v) {
+    if (!v && v !== 0) return 'pnl-neu';
+    if (v > 0) return 'pnl-pos';
+    if (v < 0) return 'pnl-neg';
+    return 'pnl-neu';
+  }
+
+  function pnlStr(v) {
+    if (v === null || v === undefined) return '—';
+    const sign = v >= 0 ? '+' : '';
+    return `${sign}$${parseFloat(v).toFixed(2)}`;
+  }
+
+  async function refresh() {
+    try {
+      // Trading summary
+      const summary = await fetch(`${BASE}/trading/summary`).then(r => r.json());
+
+      // KPIs
+      document.getElementById('kpi-services').textContent =
+        `${summary.services_online}/${summary.services_total}`;
+
+      const pnl = summary.pnl;
+      const pnlEl = document.getElementById('kpi-pnl');
+      if (pnl && pnl.realized_today !== undefined) {
+        pnlEl.textContent = pnlStr(pnl.realized_today);
+        pnlEl.className = 'value ' + pnlClass(pnl.realized_today);
+      }
+
+      const perf = summary.performance;
+      if (perf) {
+        const wr = document.getElementById('kpi-winrate');
+        wr.textContent = perf.win_rate_pct !== null ? perf.win_rate_pct + '%' : '—';
+        wr.className = 'value ' + (perf.win_rate_pct >= 50 ? 'green' : perf.win_rate_pct < 40 ? 'red' : 'yellow');
+
+        const pf = document.getElementById('kpi-pf');
+        pf.textContent = perf.profit_factor !== null ? perf.profit_factor : '—';
+        pf.className = 'value ' + (perf.profit_factor >= 1.5 ? 'green' : perf.profit_factor < 1 ? 'red' : 'yellow');
+      }
+
+      // Open positions from trade-execution health
+      const execSvc = summary.services.find(s => s.name === 'trade-execution');
+      if (execSvc?.data?.open_orders !== undefined) {
+        document.getElementById('kpi-open').textContent = execSvc.data.open_orders;
+      }
+
+      // Service health table
+      const tbody = document.getElementById('trading-services');
+      tbody.innerHTML = summary.services.map(svc => {
+        const badge = svc.online ? '<span class="badge online">online</span>' : '<span class="badge offline">offline</span>';
+        let detail = '—';
+        if (svc.online && svc.data) {
+          const d = svc.data;
+          if (svc.name === 'trade-execution') detail = `adapter: ${d.adapter || '—'} | filled today: ${d.filled_today ?? '—'} | open: ${d.open_orders ?? '—'}`;
+          else if (svc.name === 'risk-management') detail = `daily P&L: ${pnlStr(d.daily_pnl)} | open positions: ${d.open_positions ?? '—'}`;
+          else if (svc.name === 'heatseeker') detail = `signals: ${d.signals_today ?? '—'} | last analysis: ${d.last_analysis ? new Date(d.last_analysis).toLocaleTimeString() : '—'}`;
+          else if (svc.name === 'trade-approval') detail = `mode: ${d.mode || '—'} | queued: ${d.queued ?? '—'} | approved today: ${d.approved_today ?? '—'}`;
+          else if (svc.name === 'market-data') detail = `market: ${d.market_status || '—'} | session: ${d.session || '—'}`;
+          else detail = `uptime: ${d.uptime ? Math.floor(d.uptime) + 's' : '—'}`;
+        } else if (!svc.online) {
+          detail = '<span style="color:#f85149">unreachable</span>';
+        }
+        return `<tr>
+          <td><strong>${svc.name}</strong></td>
+          <td style="color:#8b949e">${svc.port}</td>
+          <td>${badge}</td>
+          <td style="color:#8b949e;font-size:12px">${detail}</td>
+        </tr>`;
+      }).join('');
+
+    } catch (err) {
+      console.error('Summary fetch failed:', err);
+    }
+
+    // Outcomes grid
+    try {
+      const info = await fetch(`${BASE}/info`).then(r => r.json());
+      const grid = document.getElementById('outcomes-grid');
+      grid.innerHTML = info.outcomes.map(o => `
+        <div class="outcome-card ${o.status === 'active' ? 'active' : ''}">
+          <div class="name">${o.label}</div>
+          <div class="meta">
+            <span class="badge ${o.status}">${o.status}</span>
+            &nbsp;${o.service_count} service${o.service_count !== 1 ? 's' : ''}
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {}
+
+    document.getElementById('last-refresh').textContent =
+      'Last refresh: ' + new Date().toLocaleTimeString();
+    document.getElementById('subtitle').textContent =
+      `Demand Economy Dashboard — EC-Prime | ${new Date().toLocaleTimeString()}`;
+  }
+
+  refresh();
+  setInterval(refresh, 10000);
+</script>
+
+</body>
+</html>

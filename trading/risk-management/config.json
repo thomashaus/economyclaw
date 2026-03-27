@@ -189,5 +189,5 @@
   },
   "heatseeker_url": "http://localhost:8111",
   "market_data_url": "http://localhost:8110",
-  "registry_url": "http://localhost:8099"
+  "registry_url": "http://localhost:8200"
 }

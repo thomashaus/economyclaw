@@ -1,0 +1,17 @@
+{
+  "name": "chief-of-staff",
+  "version": "0.1.0",
+  "description": "EconomyClaw demand economy orchestrator — aggregates health and status across all demand-side outcomes",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

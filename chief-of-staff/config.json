@@ -1,0 +1,40 @@
+{
+  "version": "0.1",
+  "service": "chief-of-staff",
+  "role": "Demand economy orchestrator — aggregates health and status across all demand-side outcomes",
+
+  "demand_outcomes": {
+    "trading": {
+      "label": "Trading Operations",
+      "status": "active",
+      "services": [
+        { "name": "market-data",     "port": 8110 },
+        { "name": "heatseeker",      "port": 8111 },
+        { "name": "risk-management", "port": 8112 },
+        { "name": "trade-approval",  "port": 8113 },
+        { "name": "trade-execution", "port": 8114 }
+      ]
+    },
+    "consulting": {
+      "label": "Consulting",
+      "status": "planned",
+      "services": []
+    },
+    "incubator": {
+      "label": "OpenClaw Incubator",
+      "status": "planned",
+      "services": []
+    },
+    "rd": {
+      "label": "R&D",
+      "status": "planned",
+      "services": []
+    }
+  },
+
+  "supply_economy": {
+    "treasury_url":          "http://localhost:8002",
+    "perf_observability_url": "http://localhost:8032",
+    "governor_url":          "http://localhost:8001"
+  }
+}

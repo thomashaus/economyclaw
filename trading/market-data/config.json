@@ -108,5 +108,5 @@
   },
   "snapshot_interval_ms": 5000,
   "history_candles_kept": 500,
-  "registry_url": "http://localhost:8099"
+  "registry_url": "http://localhost:8200"
 }
