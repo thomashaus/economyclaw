@@ -1,0 +1,40 @@
+EconomyClaw
+Copyright 2026 DB (danboz73@gmail.com)
+
+This product is licensed under the Apache License, Version 2.0.
+
+================================================================================
+
+Heritage & Acknowledgment
+================================================================================
+
+EconomyClaw is built within the OpenClaw repository, which is licensed under the
+MIT License. The OpenClaw project provided the original scaffolding and repo
+structure from which EconomyClaw was developed.
+
+The OpenClaw MIT License applies to:
+- The original repository structure and scaffolding
+- Any code or content that predates the EconomyClaw project
+
+The Apache License 2.0 applies to all EconomyClaw-originated code and content,
+specifically:
+- economy/          — Supply Economy services (Governor, Trade Desk, Treasury,
+                      Security, Data Governance, Backup-DR, IAM, Context Mgmt,
+                      Trust Scoring, Entrepreneurial, Observability) and Trading
+                      Pipeline services (Market Data, Heatseeker, Risk Mgmt,
+                      Trade Approval, Trade Execution)
+- trading/          — Trading ecosystem configuration
+- bin/              — Operational scripts
+- 04-Service-Code/  — Service development and deployment code
+
+================================================================================
+
+Theoretical Foundation
+================================================================================
+
+The Supply Economy architecture is based on Promise Theory by Mark Burgess.
+Promise Theory is an academic framework — it is not software and carries no
+software license. Its principles are applied here as an architectural pattern
+for autonomous service coordination.
+
+Reference: "Promise Theory: Principles and Applications" by Mark Burgess

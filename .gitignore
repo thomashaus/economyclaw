@@ -3,6 +3,8 @@
 
 # Then whitelist only what we want
 !.gitignore
+!LICENSE
+!NOTICE
 !economy/
 !economy/**
 !trading/
