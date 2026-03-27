@@ -240,11 +240,201 @@ if (config.execution_adapter.active === 'simulated') {
 
 
 // ─── ProjectX Execution Adapter (Universal Broker Gateway) ──────────────────
-// ProjectX is the universal API gateway covering all supported prop firms:
-// TopstepX (active), The Futures Desk, FuturesElite, Bulenox (all v2_pending)
-// One $14.50/mo subscription (topstep discount code) covers all linked accounts.
-// Dashboard: https://dashboard.projectx.com
+// Covers: TopstepX (active), TFD, FuturesElite, Bulenox (v2_pending)
+// Docs: https://gateway.docs.projectx.com
+// Auth: JWT via /api/Auth/loginKey — 24h token, cached in-process
+// Fill monitoring: polling /api/Order/search every 2s (SignalR upgrade = v2 TODO)
 
+// ── ProjectX order type enum ──────────────────────────────────────────────────
+const PX_ORDER_TYPE = { Limit: 1, Market: 2, StopLimit: 3, Stop: 4, TrailingStop: 5 };
+const PX_SIDE       = { Buy: 1, Sell: 2 };
+
+// ── In-process state (survives restarts only if adapter stays active) ─────────
+const pxState = {
+  token: null,
+  tokenExpiry: null,       // Date
+  accountId: null,
+  contractCache: {},       // { 'ES': 'CON.F.US.ES.M25', ... }
+};
+
+// ── Auth — get/refresh JWT ────────────────────────────────────────────────────
+async function pxGetToken(firmConfig) {
+  // Return cached token if still valid (with 5-min buffer)
+  if (pxState.token && pxState.tokenExpiry && new Date() < new Date(pxState.tokenExpiry.getTime() - 300000)) {
+    return pxState.token;
+  }
+
+  const res = await fetch(`${firmConfig.api_base}/api/Auth/loginKey`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userName: firmConfig.username, apiKey: firmConfig.api_key }),
+    signal: AbortSignal.timeout(10000)
+  });
+
+  const data = await res.json();
+  if (!data.success || !data.token) {
+    throw new Error(`ProjectX auth failed: ${data.errorMessage || 'unknown error'}`);
+  }
+
+  pxState.token = data.token;
+  pxState.tokenExpiry = new Date(Date.now() + 23 * 3600 * 1000); // 23h (24h JWT)
+  console.log(`[trade-execution] ProjectX auth OK — token valid until ${pxState.tokenExpiry.toISOString()}`);
+  return pxState.token;
+}
+
+// ── Account lookup — get accountId ───────────────────────────────────────────
+async function pxGetAccountId(firmConfig, token) {
+  if (pxState.accountId) return pxState.accountId;
+
+  const res = await fetch(`${firmConfig.api_base}/api/Account/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ onlyActiveAccounts: true }),
+    signal: AbortSignal.timeout(10000)
+  });
+
+  const data = await res.json();
+  if (!data.success || !data.accounts || data.accounts.length === 0) {
+    throw new Error(`ProjectX account lookup failed: ${data.errorMessage || 'no active accounts'}`);
+  }
+
+  // Use configured account_id if specified, otherwise take first active tradable account
+  let account = data.accounts.find(a => a.canTrade);
+  if (firmConfig.account_id) {
+    account = data.accounts.find(a => String(a.id) === String(firmConfig.account_id)) || account;
+  }
+
+  if (!account) throw new Error('No tradable ProjectX account found');
+
+  pxState.accountId = account.id;
+  console.log(`[trade-execution] ProjectX account: ${account.name} (id: ${account.id})`);
+  return pxState.accountId;
+}
+
+// ── Contract ID lookup — symbol → ProjectX contractId ────────────────────────
+async function pxGetContractId(firmConfig, token, symbol) {
+  if (pxState.contractCache[symbol]) return pxState.contractCache[symbol];
+
+  const res = await fetch(`${firmConfig.api_base}/api/Contract/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ searchText: symbol, live: true }),
+    signal: AbortSignal.timeout(10000)
+  });
+
+  const data = await res.json();
+  if (!data.success || !data.contracts || data.contracts.length === 0) {
+    throw new Error(`ProjectX contract lookup failed for ${symbol}: ${data.errorMessage || 'no contracts found'}`);
+  }
+
+  // Find front-month contract (lowest expiry that is still active)
+  const now = new Date();
+  const active = data.contracts
+    .filter(c => c.isActive && (!c.expirationDate || new Date(c.expirationDate) > now))
+    .sort((a, b) => new Date(a.expirationDate || 9999999999) - new Date(b.expirationDate || 9999999999));
+
+  if (!active.length) throw new Error(`No active front-month contract found for ${symbol}`);
+
+  pxState.contractCache[symbol] = active[0].id;
+  console.log(`[trade-execution] ProjectX contract: ${symbol} → ${active[0].id} (${active[0].name || ''})`);
+  return pxState.contractCache[symbol];
+}
+
+// ── Map our order type string to ProjectX enum ────────────────────────────────
+function pxMapOrderType(orderType) {
+  switch (orderType) {
+    case 'limit':      return PX_ORDER_TYPE.Limit;
+    case 'market':     return PX_ORDER_TYPE.Market;
+    case 'stop_buy':   return PX_ORDER_TYPE.Stop;   // Buy stop — triggers on rise to stopPrice
+    case 'stop_sell':  return PX_ORDER_TYPE.Stop;   // Sell stop — triggers on drop to stopPrice
+    case 'stop_limit': return PX_ORDER_TYPE.StopLimit;
+    default:           return PX_ORDER_TYPE.Limit;
+  }
+}
+
+// ── Poll for order fill ───────────────────────────────────────────────────────
+// Polls /api/Order/search every 2s until filled or timeout (60s)
+// TODO v2: replace with SignalR hub subscription (hubs/user → OrderUpdated)
+async function pxWaitForFill(firmConfig, token, orderId, timeoutMs = 60000) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 2000));
+
+    const res = await fetch(`${firmConfig.api_base}/api/Order/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ orderId }),
+      signal: AbortSignal.timeout(5000)
+    }).catch(() => null);
+
+    if (!res || !res.ok) continue;
+    const data = await res.json();
+    const orders = data.orders || [];
+    const o = orders.find(x => x.id === orderId);
+    if (!o) continue;
+
+    // Status: 1=Working, 2=Filled, 3=Cancelled, 4=Rejected, 5=Expired
+    if (o.status === 2) {
+      return { filled: true, fill_price: o.avgFillPrice || o.limitPrice || o.stopPrice, order: o };
+    }
+    if (o.status >= 3) {
+      return { filled: false, reason: `Order ${orderId} status: ${o.status}`, order: o };
+    }
+  }
+
+  return { filled: false, reason: `Order ${orderId} fill timeout after ${timeoutMs / 1000}s` };
+}
+
+// ── Place bracket (stop loss + take profit) after entry fill ─────────────────
+async function pxPlaceBracket(firmConfig, token, accountId, contractId, order, fillPrice) {
+  const isLong = order.direction === 'long';
+  const results = {};
+
+  // Stop loss
+  if (order.stop_price) {
+    const slRes = await fetch(`${firmConfig.api_base}/api/Order/place`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        accountId,
+        contractId,
+        type: PX_ORDER_TYPE.Stop,
+        side: isLong ? PX_SIDE.Sell : PX_SIDE.Buy,
+        size: order.contracts,
+        stopPrice: order.stop_price,
+        timeInForce: 'GTC'
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+    const slData = await slRes.json();
+    results.stop_loss = slData.success ? { id: slData.orderId, price: order.stop_price } : { error: slData.errorMessage };
+  }
+
+  // Take profit
+  if (order.target_price) {
+    const tpRes = await fetch(`${firmConfig.api_base}/api/Order/place`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        accountId,
+        contractId,
+        type: PX_ORDER_TYPE.Limit,
+        side: isLong ? PX_SIDE.Sell : PX_SIDE.Buy,
+        size: order.contracts,
+        limitPrice: order.target_price,
+        timeInForce: 'GTC'
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+    const tpData = await tpRes.json();
+    results.take_profit = tpData.success ? { id: tpData.orderId, price: order.target_price } : { error: tpData.errorMessage };
+  }
+
+  return results;
+}
+
+// ── Main projectxExecute ──────────────────────────────────────────────────────
 async function projectxExecute(order) {
   const pxConfig = config.execution_adapter.adapters.projectx;
   const activeFirmKey = pxConfig.active_firm;
@@ -259,42 +449,109 @@ async function projectxExecute(order) {
     };
   }
 
-  // TODO: Implement ProjectX API integration
-  // Auth (OAuth):
-  //   POST {api_base}/api/Auth/loginKey { apiKey, username }
-  //   → returns { token }
-  //
-  // Get account:
-  //   GET {api_base}/api/Account/list  (Bearer token)
-  //   → extract accountId for active_firm
-  //
-  // Place order:
-  //   POST {api_base}/api/Order/place {
-  //     accountId, symbol, action (Buy/Sell),
-  //     orderType (Limit/Market/StopMarket/StopLimit),
-  //     quantity, limitPrice, stopPrice, timeInForce (Day/GTC)
-  //   }
-  //
-  // Monitor fills:
-  //   SignalR hub: {api_base}/hubs/orderHub
-  //   Events: OrderUpdated, PositionUpdated, AccountUpdated
-  //
-  // Bracket orders:
-  //   Place OCO (stop_loss + take_profit) after entry fill confirmation
-  //
-  // Firm routing:
-  //   topstepx  → gateway.topstepx.com  (backend: TopstepX internal)
-  //   tfd_100k  → gateway.projectx.com  (backend: Rithmic)
-  //   fe_100k   → gateway.projectx.com  (backend: DxFeed)
-  //   bulenox   → gateway.projectx.com  (backend: Rithmic)
+  try {
+    // 1. Auth
+    const token = await pxGetToken(firmConfig);
 
-  return {
-    filled: false,
-    reason: `ProjectX adapter: implementation pending for ${activeFirmKey}. Use simulated adapter for now.`,
-    adapter: 'projectx',
-    active_firm: activeFirmKey,
-    firm_label: firmConfig.label
-  };
+    // 2. Account
+    const accountId = await pxGetAccountId(firmConfig, token);
+
+    // 3. Contract ID
+    const contractId = await pxGetContractId(firmConfig, token, order.symbol);
+
+    // 4. Map order side
+    const side = (order.direction === 'long') ? PX_SIDE.Buy : PX_SIDE.Sell;
+    const orderType = pxMapOrderType(order.order_type || 'stop_buy');
+
+    // 5. Build order payload
+    const payload = {
+      accountId,
+      contractId,
+      type: orderType,
+      side,
+      size: order.contracts,
+      timeInForce: 'DAY'
+    };
+
+    // Attach prices based on order type
+    if (order.entry_price) {
+      if (orderType === PX_ORDER_TYPE.Limit)      payload.limitPrice = order.entry_price;
+      if (orderType === PX_ORDER_TYPE.Stop)        payload.stopPrice  = order.entry_price;
+      if (orderType === PX_ORDER_TYPE.StopLimit) { payload.stopPrice  = order.entry_price; payload.limitPrice = order.entry_price; }
+    }
+
+    console.log(`[trade-execution] ProjectX placing order: ${order.symbol} ${order.direction} ×${order.contracts} ${order.order_type} @ ${order.entry_price}`);
+
+    // 6. Place entry order
+    const placeRes = await fetch(`${firmConfig.api_base}/api/Order/place`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    const placeData = await placeRes.json();
+    if (!placeData.success) {
+      throw new Error(`Order placement failed: ${placeData.errorMessage}`);
+    }
+
+    const pxOrderId = placeData.orderId;
+    console.log(`[trade-execution] ProjectX order placed: ${pxOrderId}`);
+
+    // 7. For stop orders — return pending_trigger (don't poll; they wait for price)
+    if (orderType === PX_ORDER_TYPE.Stop || orderType === PX_ORDER_TYPE.StopLimit) {
+      return {
+        filled: false,
+        pending_trigger: true,
+        trigger_price: order.entry_price,
+        px_order_id: pxOrderId,
+        reason: `Stop order ${pxOrderId} placed. Waiting for price to reach ${order.entry_price}.`,
+        adapter: 'projectx',
+        active_firm: activeFirmKey
+      };
+    }
+
+    // 8. For limit/market orders — poll for fill
+    const fillResult = await pxWaitForFill(firmConfig, token, pxOrderId);
+
+    if (!fillResult.filled) {
+      return { filled: false, reason: fillResult.reason, px_order_id: pxOrderId, adapter: 'projectx' };
+    }
+
+    const fillPrice = fillResult.fill_price;
+    console.log(`[trade-execution] ProjectX filled: ${pxOrderId} @ ${fillPrice}`);
+
+    // 9. Place bracket orders after fill
+    let bracketOrders = null;
+    if (config.order_defaults.bracket_enabled && (order.stop_price || order.target_price)) {
+      bracketOrders = await pxPlaceBracket(firmConfig, token, accountId, contractId, order, fillPrice);
+    }
+
+    return {
+      filled: true,
+      fill_price: fillPrice,
+      fill_time: now(),
+      px_order_id: pxOrderId,
+      bracket_orders: bracketOrders ? {
+        stop_loss:   bracketOrders.stop_loss?.price  || null,
+        take_profit: bracketOrders.take_profit?.price || null,
+        stop_loss_id:   bracketOrders.stop_loss?.id  || null,
+        take_profit_id: bracketOrders.take_profit?.id || null
+      } : null,
+      adapter: 'projectx',
+      active_firm: activeFirmKey,
+      firm_label: firmConfig.label
+    };
+
+  } catch (err) {
+    console.error(`[trade-execution] ProjectX error: ${err.message}`);
+    return {
+      filled: false,
+      reason: `ProjectX error: ${err.message}`,
+      adapter: 'projectx',
+      active_firm: activeFirmKey
+    };
+  }
 }
 
 // ─── Execute Trade ───────────────────────────────────────────────────────────
