@@ -202,6 +202,7 @@ app.get('/info', (req, res) => {
       'POST /questions — supply economy asks human a question',
       'GET /questions — all questions (pending and answered)',
       'POST /questions/:id/answer — human answers a question',
+      'DELETE /questions/:id — remove a question',
       'GET /questions/pending — unanswered questions only'
     ]
   });
@@ -573,6 +574,17 @@ app.post('/questions/:id/answer', (req, res) => {
     answer: q.answer,
     message: 'Answer recorded. The supply service that asked will pick this up on their next check.'
   });
+});
+
+app.delete('/questions/:id', (req, res) => {
+  const idx = questions.findIndex(q => q.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Question not found: ' + req.params.id });
+
+  const removed = questions.splice(idx, 1)[0];
+  persistQuestions();
+
+  console.log(`[Governor] Question ${removed.id} deleted`);
+  res.json({ deleted: true, question_id: removed.id, question: removed.question });
 });
 
 // ─── DASHBOARD ──────────────────────────────────────────────────────────────
