@@ -29,6 +29,13 @@
       "label": "R&D",
       "status": "planned",
       "services": []
+    },
+    "agent": {
+      "label": "EconomyClaw Agent",
+      "status": "active",
+      "services": [
+        { "name": "agent-wrapper", "port": 8210 }
+      ]
     }
   },
 

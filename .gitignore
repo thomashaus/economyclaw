@@ -17,6 +17,8 @@
 !bin/**
 !04-Service-Code/
 !04-Service-Code/**
+!agent-wrapper/
+!agent-wrapper/**
 
 # But still ignore these within whitelisted dirs
 node_modules/

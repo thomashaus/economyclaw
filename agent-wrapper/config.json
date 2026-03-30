@@ -1,0 +1,25 @@
+{
+  "version": "0.1",
+  "service": "agent-wrapper",
+  "role": "EconomyClaw — Paperclip cloud adapter. Bridges Paperclip issue workflow to the EconomyClaw supply economy.",
+
+  "port": 8210,
+
+  "paperclip": {
+    "api_url": "https://team.tomhaus.cloud/",
+    "poll_interval_ms": 30000,
+    "agent_name": "EconomyClaw"
+  },
+
+  "chief_of_staff_url": "http://localhost:8200",
+
+  "supply_economy": {
+    "governor_url":   "http://localhost:8001",
+    "trade_desk_url": "http://localhost:8003"
+  },
+
+  "trust_score": {
+    "initial": 1.0,
+    "escalation_threshold": 0.6
+  }
+}

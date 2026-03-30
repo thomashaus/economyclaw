@@ -1,0 +1,16 @@
+{
+  "name": "agent-wrapper",
+  "version": "0.1.0",
+  "description": "EconomyClaw — Paperclip cloud adapter agent wrapper",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "node-fetch": "^2.7.0"
+  },
+  "license": "Apache-2.0"
+}
