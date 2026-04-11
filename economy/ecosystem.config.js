@@ -33,7 +33,7 @@ module.exports = {
 
   ].map(app => ({
     ...app,
-    cwd: "/Users/danbozicevich/economy",
+    cwd: process.env.ECONOMY_CWD || __dirname,
     env: { NODE_ENV: "production", PORT: app.port },
     max_memory_restart: "256M",
     log_date_format: "YYYY-MM-DD HH:mm:ss Z",
